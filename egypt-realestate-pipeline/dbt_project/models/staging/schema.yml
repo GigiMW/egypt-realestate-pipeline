@@ -4,24 +4,57 @@ sources:
   - name: main
     tables:
       - name: raw_listings
-        description: "Raw scraped listings from Aqarmap"
+        description: "Raw scraped listings from Aqarmap.com.eg"
 
 models:
   - name: stg_listings
-    description: "Cleaned staging layer from raw Aqarmap listings"
+    description: "Cleaned staging layer — prices and areas parsed from raw text"
     columns:
       - name: title
+        description: "Listing title"
         tests:
           - not_null
       - name: price_egp
-        description: "Listing price in Egyptian pounds"
+        description: "Price in Egyptian pounds, parsed from raw string"
       - name: area_sqm
         description: "Property area in square meters"
+      - name: scraped_at
+        description: "UTC timestamp when listing was scraped"
+        tests:
+          - not_null
 
   - name: mart_listings
-    description: "Analytics-ready listings with price per sqm"
+    description: "Analytics-ready listings with price per sqm and value flags"
     columns:
       - name: price_per_sqm
-        description: "Price divided by area"
+        description: "Price divided by area in sqm"
+        tests:
+          - not_null
       - name: price_bucket
-        description: "Categorical price range"
+        description: "Categorical price range bucket"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['under_1M', '1M_to_3M', '3M_to_5M', '5M_to_10M', 'above_10M']
+      - name: is_value_listing
+        description: "True if price per sqm is below market average"
+        tests:
+          - not_null
+
+  - name: avg_price_by_location
+    description: "Average prices aggregated by Cairo district"
+    columns:
+      - name: location
+        tests:
+          - not_null
+          - unique
+      - name: total_listings
+        description: "Number of listings in this location"
+
+  - name: price_distribution
+    description: "Listing counts and price stats per price bucket"
+    columns:
+      - name: price_bucket
+        tests:
+          - not_null
+          - unique
