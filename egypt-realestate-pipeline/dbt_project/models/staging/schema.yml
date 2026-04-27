@@ -1,0 +1,27 @@
+version: 2
+
+sources:
+  - name: main
+    tables:
+      - name: raw_listings
+        description: "Raw scraped listings from Aqarmap"
+
+models:
+  - name: stg_listings
+    description: "Cleaned staging layer from raw Aqarmap listings"
+    columns:
+      - name: title
+        tests:
+          - not_null
+      - name: price_egp
+        description: "Listing price in Egyptian pounds"
+      - name: area_sqm
+        description: "Property area in square meters"
+
+  - name: mart_listings
+    description: "Analytics-ready listings with price per sqm"
+    columns:
+      - name: price_per_sqm
+        description: "Price divided by area"
+      - name: price_bucket
+        description: "Categorical price range"
