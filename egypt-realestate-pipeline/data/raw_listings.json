@@ -1,24 +1,35 @@
 [
   {
-    "title": "Prime Living Opportunity – Apartment for Sale in Morouj with Flexible Payment Plan",
-    "price_raw": "7,497,000 EGP",
+    "title": "Apartment for sale 108 m Smoha (Sky Line) - complete utilities",
+    "price_raw": "5,500,000 EGP",
     "location": null,
-    "area_sqm": "153 sqm",
-    "bedrooms": 3,
+    "area_sqm": "108 sqm",
+    "bedrooms": 2,
     "bathrooms": 2,
-    "url": "https://www.dubizzle.com.eg/en/ad/prime-living-opportunity-apartment-for-sale-in-morouj-with-flexible-payment-plan-ID503405304.html",
-    "scraped_at": "2026-04-28T17:32:46.434169+00:00",
+    "url": "https://www.dubizzle.com.eg/en/ad/apartment-for-sale-108-m-smoha-sky-line-complete-utilities-ID503301816.html",
+    "scraped_at": "2026-04-28T17:46:36.513411+00:00",
     "page": 1
   },
   {
-    "title": "A great apartment ready for immediate delivery inside a complete compound | 230m with a pool and garden",
+    "title": "Apartment For Sale, Fully Finished Prime Location 3 Bedrooms In Mivida Gardens - New Cairo",
+    "price_raw": "21,849,277 EGP",
+    "location": null,
+    "area_sqm": "170 sqm",
+    "bedrooms": 3,
+    "bathrooms": 3,
+    "url": "https://www.dubizzle.com.eg/en/ad/apartment-for-sale-fully-finished-prime-location-3-bedrooms-in-mivida-gardens-new-cairo-ID503213363.html",
+    "scraped_at": "2026-04-28T17:46:38.411471+00:00",
+    "page": 1
+  },
+  {
+    "title": "Luxury apartment for immediate delivery inside a complete compound | 230m with a pool and garden",
     "price_raw": "9,500,000 EGP",
     "location": null,
     "area_sqm": "230 sqm",
     "bedrooms": 230,
     "bathrooms": 3,
-    "url": "https://www.dubizzle.com.eg/en/ad/a-great-apartment-ready-for-immediate-delivery-inside-a-complete-compound-230m-with-a-pool-and-garden-ID503437065.html",
-    "scraped_at": "2026-04-28T17:32:47.563575+00:00",
+    "url": "https://www.dubizzle.com.eg/en/ad/luxury-apartment-for-immediate-delivery-inside-a-complete-compound-230m-with-a-pool-and-garden-ID503437065.html",
+    "scraped_at": "2026-04-28T17:46:41.976055+00:00",
     "page": 1
   },
   {
@@ -29,18 +40,18 @@
     "bedrooms": 2,
     "bathrooms": 3,
     "url": "https://www.dubizzle.com.eg/en/ad/apartment-for-sale-fully-finished-prime-location-ready-to-move-in-district-5-new-cairo-ID503130223.html",
-    "scraped_at": "2026-04-28T17:32:49.662977+00:00",
+    "scraped_at": "2026-04-28T17:46:44.069963+00:00",
     "page": 1
   },
   {
-    "title": "At the old price, a furnished apartment with air conditioning in front of Cairo Gate is one of the finest projects in Sheikh Zayed Al Qadim.",
+    "title": "At the old price, a furnished apartment with air conditioning in front of Cairo Gate, the most upscale project in Sheikh Zayed Old.",
     "price_raw": "14,700,000 EGP",
     "location": null,
     "area_sqm": "160 sqm",
-    "bedrooms": 160,
-    "bathrooms": 3,
-    "url": "https://www.dubizzle.com.eg/en/ad/at-the-old-price-a-furnished-apartment-with-air-conditioning-in-front-of-cairo-gate-is-one-of-the-finest-projects-in-sheikh-zayed-al-qadim-ID503425852.html",
-    "scraped_at": "2026-04-28T17:32:51.401255+00:00",
+    "bedrooms": 3,
+    "bathrooms": 2,
+    "url": "https://www.dubizzle.com.eg/en/ad/at-the-old-price-a-furnished-apartment-with-air-conditioning-in-front-of-cairo-gate-the-most-upscale-project-in-sheikh-zayed-old-ID503425852.html",
+    "scraped_at": "2026-04-28T17:46:46.680461+00:00",
     "page": 1
   },
   {
@@ -51,29 +62,29 @@
     "bedrooms": 211,
     "bathrooms": 3,
     "url": "https://www.dubizzle.com.eg/en/ad/for-sale-in-al-rehab-2-a-very-special-site-211m-ID503431396.html",
-    "scraped_at": "2026-04-28T17:32:54.256690+00:00",
+    "scraped_at": "2026-04-28T17:46:47.876339+00:00",
     "page": 1
   },
   {
-    "title": "Apartment forsale in Hyde Park new Cairo pool view",
-    "price_raw": "10,780,000 EGP",
+    "title": "Luxury Finished  Apartment Ready to move in, O west Phase Club residence",
+    "price_raw": "9,311,280 EGP",
     "location": null,
-    "area_sqm": "191 sqm",
-    "bedrooms": 191,
+    "area_sqm": "157 sqm",
+    "bedrooms": 157,
     "bathrooms": 3,
-    "url": "https://www.dubizzle.com.eg/en/ad/apartment-forsale-in-hyde-park-new-cairo-pool-view-ID503433809.html",
-    "scraped_at": "2026-04-28T17:32:55.333534+00:00",
-    "page": 1
+    "url": "https://www.dubizzle.com.eg/en/ad/luxury-finished-apartment-ready-to-move-in-o-west-phase-club-residence-ID503393244.html",
+    "scraped_at": "2026-04-28T17:46:52.224781+00:00",
+    "page": 2
   },
   {
-    "title": "Apartment for Sale in R7 | Heart of the New Administrative Capital | Luxury Design & Full Amenities",
-    "price_raw": "5,164,417 EGP",
+    "title": "Under market price 3bedrooms fully finished Apartment for sale in Mivida 5th settlement New Cairo",
+    "price_raw": "17,675,001 EGP",
     "location": null,
-    "area_sqm": "190 sqm",
-    "bedrooms": 190,
+    "area_sqm": "200 sqm",
+    "bedrooms": 3,
     "bathrooms": 3,
-    "url": "https://www.dubizzle.com.eg/en/ad/apartment-for-sale-in-r7-heart-of-the-new-administrative-capital-luxury-design-full-amenities-ID503033533.html",
-    "scraped_at": "2026-04-28T17:33:00.159229+00:00",
+    "url": "https://www.dubizzle.com.eg/en/ad/under-market-price-3bedrooms-fully-finished-apartment-for-sale-in-mivida-5th-settlement-new-cairo-ID503353275.html",
+    "scraped_at": "2026-04-28T17:46:53.617919+00:00",
     "page": 2
   },
   {
@@ -84,7 +95,7 @@
     "bedrooms": 135,
     "bathrooms": 2,
     "url": "https://www.dubizzle.com.eg/en/ad/apartment-for-sale-ready-for-immediate-occupancy-fully-finished-and-ready-to-live-in-in-the-heart-of-the-new-administrative-capital-r5-area-in-ga-ID503424018.html",
-    "scraped_at": "2026-04-28T17:33:02.056713+00:00",
+    "scraped_at": "2026-04-28T17:46:55.619313+00:00",
     "page": 2
   },
   {
@@ -95,7 +106,7 @@
     "bedrooms": 105,
     "bathrooms": 2,
     "url": "https://www.dubizzle.com.eg/en/ad/apartment-for-sale-on-a-typical-floor-in-the-icon-new-cairo-fifth-settlement-near-90th-street-behind-hyde-park-and-minutes-from-the-american-univ-ID503429695.html",
-    "scraped_at": "2026-04-28T17:33:03.297957+00:00",
+    "scraped_at": "2026-04-28T17:46:56.717269+00:00",
     "page": 2
   },
   {
@@ -106,7 +117,7 @@
     "bedrooms": 210,
     "bathrooms": 3,
     "url": "https://www.dubizzle.com.eg/en/ad/%D8%B4%D9%82%D8%AA%D9%83-210%D9%85-%D8%A8%D9%81%D9%8A%D9%88-%D8%B9%D9%84%D9%8A-%D9%81%D9%8A%D9%84%D8%A7%D8%AA-%D8%AC%D8%B1%D8%A7%D9%86%D8%AF-%D9%87%D8%A7%D9%8A%D8%AA%D8%B3-%D9%85%D8%A8%D8%A7%D8%B4%D8%B1%D8%A9-%D8%A8%D9%85%D9%82%D8%AF%D9%8540-%D9%81%D9%82%D8%B7-ID502853219.html",
-    "scraped_at": "2026-04-28T17:33:04.470798+00:00",
+    "scraped_at": "2026-04-28T17:46:59.260669+00:00",
     "page": 2
   },
   {
@@ -117,29 +128,29 @@
     "bedrooms": 3,
     "bathrooms": 2,
     "url": "https://www.dubizzle.com.eg/en/ad/roof-apartment-185-meters-with-a-terrace-of-200-meters-overlooking-the-sea-immediate-receipt-installments-for-6-months-the-third-neighborhood-east-of-villas-super-deluxe-finishing-the-elevator-works-next-to-entrance-2-suez-ID503351172.html",
-    "scraped_at": "2026-04-28T17:33:08.545252+00:00",
+    "scraped_at": "2026-04-28T17:47:00.519692+00:00",
     "page": 2
   },
   {
-    "title": "Apartment With Garden Raedy To Move Fully Finished With ACS Very Prime Location  For Sale View Landscape At Compound Mountain View I City New Cairo. .",
-    "price_raw": "6,850,000 EGP",
+    "title": "Apartment for sale in Al-Shorouk City in the second neighborhood east of Villas",
+    "price_raw": "4,750,000 EGP",
     "location": null,
-    "area_sqm": "125 sqm",
-    "bedrooms": 125,
-    "bathrooms": 2,
-    "url": "https://www.dubizzle.com.eg/en/ad/apartment-with-garden-raedy-to-move-fully-finished-with-acs-very-prime-location-for-sale-view-landscape-at-compound-mountain-view-i-city-new-cairo-ID503434970.html",
-    "scraped_at": "2026-04-28T17:33:11.086874+00:00",
-    "page": 2
-  },
-  {
-    "title": "With The Lowest Down Payment 2.5M!! nd installments until 2031,  Apartment In The Best location in Compound Sarai Al-Mostakabl City Near To Madinaty",
-    "price_raw": "4,700,000 EGP",
-    "location": null,
-    "area_sqm": "110 sqm",
-    "bedrooms": 110,
+    "area_sqm": "170 sqm",
+    "bedrooms": 170,
     "bathrooms": 3,
-    "url": "https://www.dubizzle.com.eg/en/ad/with-the-lowest-down-payment-25m-nd-installments-until-2031-apartment-in-the-best-location-in-compound-sarai-al-mostakabl-city-near-to-madinaty-ID503396666.html",
-    "scraped_at": "2026-04-28T17:33:15.555808+00:00",
+    "url": "https://www.dubizzle.com.eg/en/ad/apartment-for-sale-in-al-shorouk-city-in-the-second-neighborhood-east-of-villas-ID503409435.html",
+    "scraped_at": "2026-04-28T17:47:05.591531+00:00",
+    "page": 3
+  },
+  {
+    "title": "Apartment Finished Super Lux in Mountain View iCity - prime location-Maintenance Paid",
+    "price_raw": "8,000,000 EGP",
+    "location": null,
+    "area_sqm": "165 sqm",
+    "bedrooms": 3,
+    "bathrooms": 2,
+    "url": "https://www.dubizzle.com.eg/en/ad/apartment-finished-super-lux-in-mountain-view-icity-prime-location-maintenance-paid-ID503288125.html",
+    "scraped_at": "2026-04-28T17:47:06.940662+00:00",
     "page": 3
   },
   {
@@ -150,7 +161,7 @@
     "bedrooms": 3,
     "bathrooms": 2,
     "url": "https://www.dubizzle.com.eg/en/ad/apartment-prime-location-under-market-price-ready-ID503287462.html",
-    "scraped_at": "2026-04-28T17:33:16.707466+00:00",
+    "scraped_at": "2026-04-28T17:47:07.932252+00:00",
     "page": 3
   },
   {
@@ -161,7 +172,7 @@
     "bedrooms": 183,
     "bathrooms": 3,
     "url": "https://www.dubizzle.com.eg/en/ad/fully-finished-apartment-in-heart-of-zayed-ready-to-move-ID503436609.html",
-    "scraped_at": "2026-04-28T17:33:19.693959+00:00",
+    "scraped_at": "2026-04-28T17:47:09.918235+00:00",
     "page": 3
   },
   {
@@ -172,7 +183,7 @@
     "bedrooms": 72,
     "bathrooms": 2,
     "url": "https://www.dubizzle.com.eg/en/ad/apartment-for-sale-72m-palm-hills-new-cairo-cleo-ID503433141.html",
-    "scraped_at": "2026-04-28T17:33:21.391200+00:00",
+    "scraped_at": "2026-04-28T17:47:11.649487+00:00",
     "page": 3
   },
   {
@@ -183,18 +194,7 @@
     "bedrooms": 2,
     "bathrooms": 2,
     "url": "https://www.dubizzle.com.eg/en/ad/apartment-for-sale-in-lake-view-residence-fully-finished-and-ready-to-move-in-fifth-settlement-ID503434160.html",
-    "scraped_at": "2026-04-28T17:33:23.226562+00:00",
-    "page": 3
-  },
-  {
-    "title": "Apartment Ready to move under market price",
-    "price_raw": "5,500,000 EGP",
-    "location": null,
-    "area_sqm": "110 sqm",
-    "bedrooms": 2,
-    "bathrooms": 2,
-    "url": "https://www.dubizzle.com.eg/en/ad/apartment-ready-to-move-under-market-price-ID503251918.html",
-    "scraped_at": "2026-04-28T17:33:24.435913+00:00",
+    "scraped_at": "2026-04-28T17:47:16.169907+00:00",
     "page": 3
   }
 ]
