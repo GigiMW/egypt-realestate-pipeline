@@ -4,9 +4,11 @@ services:
   airflow:
     image: apache/airflow:2.9.0
     environment:
-      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=sqlite:////opt/airflow/airflow.db
+      - AIRFLOW__WEBSERVER__WEB_SERVER_HOST=0.0.0.0
+      - AIRFLOW__CORE__FERNET_KEY=ZmDfcTF7_60GrrY167zsiPd67pEvs0aGOv2oasOM1Pg=
     volumes:
       - ./dags:/opt/airflow/dags
       - ./scraper:/opt/airflow/scraper
@@ -16,8 +18,11 @@ services:
     ports:
       - "8080:8080"
     command: >
-      bash -c "airflow db init &&
-               airflow users create --username admin --password admin
-               --firstname Engy --lastname DE --role Admin
-               --email admin@example.com &&
-               airflow webserver & airflow scheduler"
+      bash -c "
+        airflow db init &&
+        sleep 5 &&
+        airflow users create --username admin --password admin --firstname Engy --lastname DE --role Admin --email admin@example.com || true &&
+        airflow webserver --port 8080 &
+        sleep 10 &&
+        airflow scheduler
+      "
