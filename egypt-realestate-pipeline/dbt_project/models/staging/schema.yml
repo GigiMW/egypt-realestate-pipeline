@@ -3,54 +3,75 @@ version: 2
 sources:
   - name: main
     tables:
-      - name: raw_indicators
-        description: "Raw economic indicators from World Bank Egypt API"
+      - name: raw_listings
+        description: "Raw property listings from Dubizzle Egypt"
+        columns:
+          - name: title
+            description: "Listing title"
+          - name: price_raw
+            description: "Raw price string"
+          - name: location
+            description: "Property location"
+          - name: area_sqm
+            description: "Area in square meters"
+          - name: bedrooms
+            description: "Number of bedrooms"
+          - name: bathrooms
+            description: "Number of bathrooms"
+          - name: url
+            description: "Listing URL"
+          - name: scraped_at
+            description: "Timestamp when scraped"
+          - name: page
+            description: "Page number from scraper"
 
 models:
   - name: stg_listings
-    description: "Cleaned World Bank Egypt economic indicators"
+    description: "Cleaned Dubizzle Egypt apartment listings"
     columns:
-      - name: indicator_key
+      - name: title
         tests:
           - not_null
-      - name: year
+      - name: price_raw
         tests:
           - not_null
-      - name: value
+      - name: url
         tests:
           - not_null
       - name: scraped_at
         tests:
           - not_null
+      - name: price_egp
+        tests:
+          - not_null
+      - name: area_sqm_value
+        tests:
+          - not_null
 
   - name: mart_listings
-    description: "Egypt housing affordability by year — pivoted indicators"
+    description: "Enriched Dubizzle listings with price buckets"
     columns:
-      - name: year
+      - name: title
         tests:
           - not_null
-          - unique
-      - name: affordability_rating
+      - name: price_bucket
         tests:
           - not_null
-          - accepted_values:
-              values: ['good', 'moderate', 'poor', 'very_poor']
 
   - name: avg_price_by_location
-    description: "Summary statistics per economic indicator"
+    description: "Average Dubizzle listing price by location"
     columns:
-      - name: indicator_key
+      - name: location
         tests:
           - not_null
           - unique
+      - name: listing_count
+        tests:
+          - not_null
 
   - name: price_distribution
-    description: "Egypt inflation categorized by severity per year"
+    description: "Dubizzle listings categorized by price bucket"
     columns:
-      - name: year
-        tests:
-          - not_null
-          - unique
-      - name: inflation_category
+      - name: price_bucket
         tests:
           - not_null

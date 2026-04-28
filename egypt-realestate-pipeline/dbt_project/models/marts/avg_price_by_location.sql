@@ -2,18 +2,17 @@ with base as (
     select * from {{ ref('stg_listings') }}
 ),
 
-by_indicator as (
+by_location as (
     select
-        indicator_key,
-        indicator_name,
-        count(*)                as total_years,
-        round(min(value), 2)    as min_value,
-        round(max(value), 2)    as max_value,
-        round(avg(value), 2)    as avg_value,
-        min(year)               as earliest_year,
-        max(year)               as latest_year
+        location,
+        count(*) as listing_count,
+        round(avg(price_egp), 2) as avg_price_egp,
+        round(avg(price_per_sqm_egp), 2) as avg_price_per_sqm_egp,
+        round(min(price_egp), 2) as min_price_egp,
+        round(max(price_egp), 2) as max_price_egp
     from base
-    group by indicator_key, indicator_name
+    group by location
 )
 
-select * from by_indicator
+select * from by_location
+order by listing_count desc, avg_price_per_sqm_egp desc

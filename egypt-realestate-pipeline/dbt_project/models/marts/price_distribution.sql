@@ -1,26 +1,21 @@
 with base as (
     select * from {{ ref('stg_listings') }}
-    where indicator_key = 'inflation'
 ),
 
 categorized as (
     select
-        year,
-        value                           as inflation_rate,
         case
-            when value < 5  then 'low'
-            when value < 10 then 'moderate'
-            when value < 20 then 'high'
-            else 'very_high'
-        end                             as inflation_category,
-        case
-            when value < 5  then 1
-            when value < 10 then 2
-            when value < 20 then 3
-            else 4
-        end                             as severity_rank
+            when price_egp < 3000000 then 'under_3m'
+            when price_egp < 5000000 then '3m_to_5m'
+            when price_egp < 10000000 then '5m_to_10m'
+            else '10m_plus'
+        end as price_bucket,
+        count(*) as listing_count,
+        round(avg(price_egp), 2) as avg_price_egp,
+        round(avg(price_per_sqm_egp), 2) as avg_price_per_sqm_egp
     from base
+    group by 1
 )
 
 select * from categorized
-order by year desc
+order by listing_count desc, price_bucket
