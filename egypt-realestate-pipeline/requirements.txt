@@ -1,7 +1,7 @@
 requests==2.31.0
 beautifulsoup4==4.12.3
-dbt-core==1.11.8
-dbt-duckdb==1.10.1
-duckdb==1.10.1
+dbt-core==1.7.0
+dbt-duckdb==1.7.0
+duckdb==1.5.2
 pandas==2.2.0
 apache-airflow==2.9.0

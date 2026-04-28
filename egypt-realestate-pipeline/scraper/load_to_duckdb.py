@@ -2,7 +2,7 @@ import duckdb
 import json
 import os
 
-RAW_FILE = "data/raw_indicators.json"
+RAW_FILE = "data/raw_listings.json"
 DB_FILE  = "data/realestate.duckdb"
 
 def load():
@@ -19,48 +19,48 @@ def load():
 
     con = duckdb.connect(DB_FILE)
 
-    con.execute("DROP TABLE IF EXISTS raw_indicators")
+    con.execute("DROP TABLE IF EXISTS raw_listings")
     con.execute("""
-        CREATE TABLE raw_indicators (
-            indicator_key   VARCHAR,
-            indicator_code  VARCHAR,
-            indicator_name  VARCHAR,
-            country         VARCHAR,
-            country_code    VARCHAR,
-            year            INTEGER,
-            value           DOUBLE,
-            unit            VARCHAR,
-            scraped_at      TIMESTAMP
+        CREATE TABLE raw_listings (
+            title        VARCHAR,
+            price_raw    VARCHAR,
+            location     VARCHAR,
+            area_sqm     VARCHAR,
+            bedrooms     INTEGER,
+            bathrooms    INTEGER,
+            url          VARCHAR,
+            scraped_at   TIMESTAMP,
+            page         INTEGER
         )
     """)
 
     for r in records:
         con.execute("""
-            INSERT INTO raw_indicators VALUES (?,?,?,?,?,?,?,?,?)
+            INSERT INTO raw_listings VALUES (?,?,?,?,?,?,?,?,?)
         """, [
-            r["indicator_key"],
-            r["indicator_code"],
-            r["indicator_name"],
-            r["country"],
-            r["country_code"],
-            r["year"],
-            r["value"],
-            r["unit"],
+            r.get("title"),
+            r.get("price_raw"),
+            r.get("location"),
+            r.get("area_sqm"),
+            r.get("bedrooms"),
+            r.get("bathrooms"),
+            r.get("url"),
             r["scraped_at"],
+            r.get("page"),
         ])
 
-    count = con.execute("SELECT COUNT(*) FROM raw_indicators").fetchone()[0]
+    count = con.execute("SELECT COUNT(*) FROM raw_listings").fetchone()[0]
     print(f"Loaded {count} rows into DuckDB → {DB_FILE}")
 
     print("\nSample data:")
     rows = con.execute("""
-        SELECT indicator_key, year, round(value, 2) as value
-        FROM raw_indicators
-        ORDER BY indicator_key, year DESC
+        SELECT title, location, price_raw
+        FROM raw_listings
+        ORDER BY scraped_at DESC
         LIMIT 10
     """).fetchall()
     for row in rows:
-        print(f"  {row[0]:25} {row[1]}  {row[2]}")
+        print(f"  {row[0][:55]:55} | {row[1]} | {row[2]}")
 
     con.close()
 

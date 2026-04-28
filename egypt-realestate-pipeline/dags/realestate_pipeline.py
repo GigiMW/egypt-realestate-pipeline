@@ -17,7 +17,7 @@ default_args = {
 }
 
 def run_scraper():
-    scraper_path = os.path.join(PROJECT_ROOT, "scraper", "aqarmap_scraper.py")
+    scraper_path = os.path.join(PROJECT_ROOT, "scraper", "dubizzle_scraper.py")
     result = subprocess.run(
         [sys.executable, scraper_path],
         capture_output=True, text=True
@@ -38,7 +38,7 @@ def run_loader():
 
 with DAG(
     dag_id="egypt_realestate_pipeline",
-    description="Scrape Aqarmap → load to DuckDB → transform with dbt",
+    description="Scrape Dubizzle property listings → load to DuckDB → transform with dbt",
     default_args=default_args,
     start_date=datetime(2026, 1, 1),
     schedule_interval="0 8 * * *",  # runs every day at 8am
@@ -47,7 +47,7 @@ with DAG(
 ) as dag:
 
     scrape_task = PythonOperator(
-        task_id="scrape_aqarmap",
+        task_id="scrape_listings",
         python_callable=run_scraper,
     )
 

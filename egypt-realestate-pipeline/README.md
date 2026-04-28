@@ -1,11 +1,11 @@
 # Egypt Real Estate Pipeline
 
 An end-to-end data engineering pipeline that ingests live property listings
-from Aqarmap.com.eg, transforms them with dbt, and serves analytics via DuckDB.
+from Dubizzle Egypt, transforms them with dbt, and serves analytics via DuckDB.
 
 ## Architecture
 
-Aqarmap.com.eg → Python Scraper → DuckDB (raw) → dbt (staging + marts) → Analytics
+Dubizzle Egypt → Python Scraper → DuckDB (raw) → dbt (staging + marts) → Analytics
 
 Orchestrated by Apache Airflow — runs daily at 8am.
 
