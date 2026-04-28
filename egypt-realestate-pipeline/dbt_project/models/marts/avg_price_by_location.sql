@@ -1,5 +1,6 @@
 with base as (
     select * from {{ ref('stg_listings') }}
+    where location is not null  
 ),
 
 by_location as (
