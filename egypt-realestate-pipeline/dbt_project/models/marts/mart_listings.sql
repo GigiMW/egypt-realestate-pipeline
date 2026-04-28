@@ -1,39 +1,52 @@
 with base as (
     select * from {{ ref('stg_listings') }}
-    where price_egp is not null
-      and area_sqm is not null
-      and area_sqm > 0
+),
+
+pivoted as (
+    select
+        year,
+        max(case when indicator_key = 'cpi'
+            then value end)               as cpi,
+        max(case when indicator_key = 'inflation'
+            then value end)               as inflation_rate,
+        max(case when indicator_key = 'gdp_per_capita'
+            then value end)               as gdp_per_capita_usd,
+        max(case when indicator_key = 'real_interest_rate'
+            then value end)               as real_interest_rate,
+        max(case when indicator_key = 'urban_population'
+            then value end)               as urban_population
+    from base
+    group by year
 ),
 
 enriched as (
     select
-        title,
-        location,
-        price_egp,
-        area_sqm,
-        url,
-        scraped_at,
+        year,
+        round(cpi, 2)                                    as cpi,
+        round(inflation_rate, 2)                         as inflation_rate_pct,
+        round(gdp_per_capita_usd, 2)                     as gdp_per_capita_usd,
+        round(real_interest_rate, 2)                     as real_interest_rate_pct,
+        round(urban_population)                          as urban_population,
 
-        -- price per square meter
-        round(price_egp / area_sqm) as price_per_sqm,
-
-        -- bucket by price range
+        -- affordability proxy: higher inflation + higher rates = worse affordability
         case
-            when price_egp < 1000000  then 'under_1M'
-            when price_egp < 3000000  then '1M_to_3M'
-            when price_egp < 5000000  then '3M_to_5M'
-            when price_egp < 10000000 then '5M_to_10M'
-            else 'above_10M'
-        end as price_bucket,
+            when inflation_rate > 20 then 'very_poor'
+            when inflation_rate > 10 then 'poor'
+            when inflation_rate > 5  then 'moderate'
+            else 'good'
+        end                                              as affordability_rating,
 
-        -- budget flag
-        case
-            when round(price_egp / area_sqm) < 50000 then true
-            else false
-        end as is_value_listing
+        -- year over year gdp growth
+        round(
+            (gdp_per_capita_usd - lag(gdp_per_capita_usd)
+                over (order by year)) /
+            nullif(lag(gdp_per_capita_usd)
+                over (order by year), 0) * 100
+        , 2)                                             as gdp_growth_pct
 
-    from base
+    from pivoted
+    where cpi is not null
 )
 
 select * from enriched
-order by price_per_sqm asc
+order by year desc

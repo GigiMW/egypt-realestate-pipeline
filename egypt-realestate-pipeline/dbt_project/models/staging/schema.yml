@@ -3,58 +3,54 @@ version: 2
 sources:
   - name: main
     tables:
-      - name: raw_listings
-        description: "Raw scraped listings from Aqarmap.com.eg"
+      - name: raw_indicators
+        description: "Raw economic indicators from World Bank Egypt API"
 
 models:
   - name: stg_listings
-    description: "Cleaned staging layer — prices and areas parsed from raw text"
+    description: "Cleaned World Bank Egypt economic indicators"
     columns:
-      - name: title
-        description: "Listing title"
+      - name: indicator_key
         tests:
           - not_null
-      - name: price_egp
-        description: "Price in Egyptian pounds, parsed from raw string"
-      - name: area_sqm
-        description: "Property area in square meters"
+      - name: year
+        tests:
+          - not_null
+      - name: value
+        tests:
+          - not_null
       - name: scraped_at
-        description: "UTC timestamp when listing was scraped"
         tests:
           - not_null
 
   - name: mart_listings
-    description: "Analytics-ready listings with price per sqm and value flags"
+    description: "Egypt housing affordability by year — pivoted indicators"
     columns:
-      - name: price_per_sqm
-        description: "Price divided by area in sqm"
+      - name: year
         tests:
           - not_null
-      - name: price_bucket
-        description: "Categorical price range bucket"
+          - unique
+      - name: affordability_rating
         tests:
           - not_null
           - accepted_values:
-              values: ['under_1M', '1M_to_3M', '3M_to_5M', '5M_to_10M', 'above_10M']
-      - name: is_value_listing
-        description: "True if price per sqm is below market average"
-        tests:
-          - not_null
+              values: ['good', 'moderate', 'poor', 'very_poor']
 
   - name: avg_price_by_location
-    description: "Average prices aggregated by Cairo district"
+    description: "Summary statistics per economic indicator"
     columns:
-      - name: location
+      - name: indicator_key
         tests:
           - not_null
           - unique
-      - name: total_listings
-        description: "Number of listings in this location"
 
   - name: price_distribution
-    description: "Listing counts and price stats per price bucket"
+    description: "Egypt inflation categorized by severity per year"
     columns:
-      - name: price_bucket
+      - name: year
         tests:
           - not_null
           - unique
+      - name: inflation_category
+        tests:
+          - not_null

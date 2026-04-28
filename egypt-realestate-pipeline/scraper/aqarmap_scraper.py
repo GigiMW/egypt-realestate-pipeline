@@ -1,69 +1,97 @@
 import requests
-from bs4 import BeautifulSoup
 import json
 import os
-from datetime import datetime
+from datetime import datetime, UTC
 
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
-    )
+BASE_URL = "https://api.worldbank.org/v2/country/EG/indicator"
+
+INDICATORS = {
+    "cpi": {
+        "code": "FP.CPI.TOTL",
+        "name": "Consumer Price Index (2010=100)",
+        "description": "Measures inflation in Egypt over time"
+    },
+    "urban_population": {
+        "code": "SP.URB.TOTL",
+        "name": "Urban Population",
+        "description": "Total urban population in Egypt"
+    },
+    "gdp_per_capita": {
+        "code": "NY.GDP.PCAP.CD",
+        "name": "GDP Per Capita (USD)",
+        "description": "GDP per capita in current USD"
+    },
+    "real_interest_rate": {
+        "code": "FR.INR.RINR",
+        "name": "Real Interest Rate (%)",
+        "description": "Real interest rate - proxy for mortgage cost"
+    },
+    "inflation": {
+        "code": "FP.CPI.TOTL.ZG",
+        "name": "Inflation Rate (%)",
+        "description": "Annual inflation rate in Egypt"
+    },
 }
 
-BASE_URL = "https://aqarmap.com.eg/en/for-sale/apartment/cairo/"
+def fetch_indicator(indicator_key, indicator_info):
+    print(f"Fetching {indicator_info['name']}...")
+    url = f"{BASE_URL}/{indicator_info['code']}"
+    params = {
+        "format": "json",
+        "per_page": 60,
+        "mrv": 30,
+    }
 
-def scrape_listings(max_pages=3):
-    listings = []
-    for page in range(1, max_pages + 1):
-        print(f"Scraping page {page}...")
-        url = f"{BASE_URL}?page={page}"
-        try:
-            response = requests.get(url, headers=HEADERS, timeout=15)
-            response.raise_for_status()
-        except Exception as e:
-            print(f"Failed page {page}: {e}")
-            continue
+    try:
+        resp = requests.get(url, params=params, timeout=15)
+        resp.raise_for_status()
+        raw = resp.json()
 
-        soup = BeautifulSoup(response.text, "html.parser")
-        cards = soup.select("div[class*='listing-card'], div[class*='property-card'], article")
+        if not isinstance(raw, list) or len(raw) < 2:
+            print(f"  Unexpected response format")
+            return []
 
-        for card in cards:
-            listing = {}
+        records = []
+        for item in raw[1]:
+            if item.get("value") is None:
+                continue
+            records.append({
+                "indicator_key":  indicator_key,
+                "indicator_code": indicator_info["code"],
+                "indicator_name": indicator_info["name"],
+                "country":        item["country"]["value"],
+                "country_code":   item["countryiso3code"],
+                "year":           int(item["date"]),
+                "value":          float(item["value"]),
+                "unit":           item.get("unit", ""),
+                "scraped_at":     datetime.now(UTC).isoformat(),
+            })
 
-            title_el = card.select_one("h2, h3, [class*='title']")
-            listing["title"] = title_el.get_text(strip=True) if title_el else None
+        print(f"  Got {len(records)} records")
+        return records
 
-            price_el = card.select_one("[class*='price']")
-            listing["price_raw"] = price_el.get_text(strip=True) if price_el else None
-
-            location_el = card.select_one("[class*='location'], [class*='area'], [class*='address']")
-            listing["location"] = location_el.get_text(strip=True) if location_el else None
-
-            area_el = card.select_one("[class*='area'], [class*='size'], [class*='sqm']")
-            listing["area_sqm"] = area_el.get_text(strip=True) if area_el else None
-
-            link_el = card.select_one("a[href]")
-            listing["url"] = link_el["href"] if link_el else None
-
-            listing["scraped_at"] = datetime.utcnow().isoformat()
-            listing["page"] = page
-
-            if listing["title"] or listing["price_raw"]:
-                listings.append(listing)
-
-    print(f"Total listings scraped: {len(listings)}")
-    return listings
+    except Exception as e:
+        print(f"  Error: {e}")
+        return []
 
 
-def save_listings(listings, output_path="data/raw_listings.json"):
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(listings, f, ensure_ascii=False, indent=2)
-    print(f"Saved to {output_path}")
+def fetch_all():
+    all_records = []
+    for key, info in INDICATORS.items():
+        records = fetch_indicator(key, info)
+        all_records.extend(records)
+
+    print(f"\nTotal records fetched: {len(all_records)}")
+    return all_records
+
+
+def save(data, path="data/raw_indicators.json"):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    print(f"Saved to {path}")
 
 
 if __name__ == "__main__":
-    data = scrape_listings(max_pages=3)
-    save_listings(data)
+    data = fetch_all()
+    save(data)
