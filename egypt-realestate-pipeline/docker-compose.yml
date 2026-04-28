@@ -4,6 +4,8 @@ services:
   airflow:
     image: apache/airflow:2.9.0
     environment:
+      - _PIP_ADDITIONAL_REQUIREMENTS=duckdb==1.5.2 dbt-core==1.7.0 dbt-duckdb==1.7.0 requests beautifulsoup4 pandas
+      # ... rest of your env vars
       - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=sqlite:////opt/airflow/airflow.db
