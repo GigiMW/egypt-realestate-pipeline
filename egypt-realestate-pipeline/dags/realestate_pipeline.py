@@ -36,6 +36,28 @@ def run_loader():
     if result.returncode != 0:
         raise Exception(f"Loader failed:\n{result.stderr}")
 
+def run_convert_to_csv():
+    try:
+        import duckdb
+        import pandas as pd
+    except Exception as e:
+        raise RuntimeError(f"Missing dependency for conversion: {e}")
+
+    db_path = os.path.join(PROJECT_ROOT, "data", "realestate.duckdb")
+    con = duckdb.connect(db_path)
+    try:
+        con.execute("SELECT * FROM main.mart_listings").df().to_csv(
+            os.path.join(PROJECT_ROOT, "data", "mart_listings.csv"), index=False
+        )
+        con.execute("SELECT * FROM main.avg_price_by_location").df().to_csv(
+            os.path.join(PROJECT_ROOT, "data", "avg_price_by_location.csv"), index=False
+        )
+        con.execute("SELECT * FROM main.price_distribution").df().to_csv(
+            os.path.join(PROJECT_ROOT, "data", "price_distribution.csv"), index=False
+        )
+    finally:
+        con.close()
+
 with DAG(
     dag_id="egypt_realestate_pipeline",
     description="Scrape Dubizzle property listings → load to DuckDB → transform with dbt",
@@ -66,4 +88,10 @@ with DAG(
         bash_command=f"cd {DBT_PROJECT_DIR} && dbt test --profiles-dir {DBT_PROJECT_DIR}",
     )
 
+    convert_task = PythonOperator(
+        task_id="convert_to_csv",
+        python_callable=run_convert_to_csv,
+    )
+
     scrape_task >> load_task >> dbt_run >> dbt_test
+    dbt_test >> convert_task

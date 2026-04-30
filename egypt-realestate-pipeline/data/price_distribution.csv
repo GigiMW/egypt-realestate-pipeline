@@ -1,0 +1,4 @@
+price_bucket,listing_count,avg_price_egp,avg_price_per_sqm_egp
+10m_plus,7,17394325.43,104728.99
+5m_to_10m,6,8171666.67,55649.47
+3m_to_5m,5,4010000.0,30813.63
