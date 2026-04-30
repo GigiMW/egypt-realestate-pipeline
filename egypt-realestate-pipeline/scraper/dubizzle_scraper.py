@@ -55,6 +55,91 @@ def _match(pattern, text):
     return match.group(1) if match else None
 
 
+def _clean_location_text(text):
+    if not text:
+        return None
+
+    cleaned = re.sub(r"\s*,\s*Egypt\s*$", "", str(text), flags=re.IGNORECASE).strip()
+    cleaned = cleaned.strip(" ,|-\t\n\r")
+    return cleaned or None
+
+
+def _find_json_value(value, keys):
+    if isinstance(value, dict):
+        for key in keys:
+            candidate = value.get(key)
+            if candidate:
+                return candidate
+        for nested_value in value.values():
+            candidate = _find_json_value(nested_value, keys)
+            if candidate:
+                return candidate
+    elif isinstance(value, list):
+        for item in value:
+            candidate = _find_json_value(item, keys)
+            if candidate:
+                return candidate
+    return None
+
+
+def _extract_location(json_ld, title, description, page_text):
+    candidate = _find_json_value(
+        json_ld,
+        ("areaServed", "addressLocality", "addressRegion", "location", "contentLocation", "streetAddress"),
+    )
+    location = _clean_location_text(candidate)
+    if location:
+        return location
+
+    for text in (title, description, page_text):
+        if not text:
+            continue
+        match = re.search(r"\b(?:in|at|inside|within|on)\s+(.+)", text, re.IGNORECASE)
+        if not match:
+            continue
+
+        candidate = match.group(1).strip()
+        candidate = re.split(r"\s*[|\u2013\u2014]\s*", candidate, maxsplit=1)[0]
+        candidate = re.split(
+            r"\s+\b(?:in|at|inside|within|on|for sale|for rent|fully|ready|with|by|near|behind|minutes|prime|lowest price|ultra)\b",
+            candidate,
+            maxsplit=1,
+            flags=re.IGNORECASE,
+        )[0]
+        candidate = re.sub(r"\b\d+[mM]\b.*$", "", candidate).strip()
+        location = _clean_location_text(candidate)
+        if location:
+            return location
+
+    return None
+
+
+def _extract_bedrooms(json_ld, title, description, page_text):
+    candidates = [
+        _find_json_value(json_ld, ("numberOfBedrooms", "bedrooms", "bedroomCount", "numberOfRooms")),
+        title,
+        description,
+        page_text,
+    ]
+
+    patterns = (
+        r"\b(\d+)\s*[- ]?\s*bed(?:room)?s?\b",
+        r"\bbed(?:room)?s?\s*[:\-]?\s*(\d+)\b",
+    )
+
+    for candidate in candidates:
+        if isinstance(candidate, (int, float)):
+            return int(candidate)
+        if not candidate:
+            continue
+        for pattern in patterns:
+            match = re.search(pattern, str(candidate), re.IGNORECASE)
+            if match:
+                return int(match.group(1))
+
+    return None
+
+
 def _parse_ad(url, page_number):
     html = _fetch(url)
     soup = BeautifulSoup(html, "html.parser")
@@ -80,17 +165,17 @@ def _parse_ad(url, page_number):
         or _match(r"Area \(m²\)\s*([0-9,]+)", page_text)
         or _match(r"Area\s*([0-9,]+)\s*m", page_text)
     )
-    bedrooms = _match(r"(\d+)\s+Bedrooms", description) or _match(r"(\d+)\s+beds?", page_text)
+    bedrooms = _extract_bedrooms(json_ld, title, description, page_text)
     bathrooms = _match(r"(\d+)\s+Bathrooms", description) or _match(r"(\d+)\s+baths?", page_text)
 
-    location = json_ld.get("areaServed", "").replace("Cairo, Egypt", "").strip() or None
+    location = _extract_location(json_ld, title, description, page_text)
 
     return {
         "title": title,
         "price_raw": f"{price_amount} EGP" if price_amount else None,
         "location": location,
         "area_sqm": f"{area_value} sqm" if area_value else None,
-        "bedrooms": int(bedrooms) if bedrooms else None,
+        "bedrooms": bedrooms,
         "bathrooms": int(bathrooms) if bathrooms else None,
         "url": url,
         "scraped_at": _now_iso(),
