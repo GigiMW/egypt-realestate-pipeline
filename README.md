@@ -1,3 +1,6 @@
+<img width="1086" height="205" alt="successful run" src="https://github.com/user-attachments/assets/0c4bfd5a-aa17-431f-98d9-19d78ad51152" />
+<img width="908" height="860" alt="dbt lineage graph" src="https://github.com/user-attachments/assets/4f944137-7d14-46b3-9a51-3fb67b75dc53" />
+<img width="1902" height="903" alt="dbt docs model page" src="https://github.com/user-attachments/assets/130928c6-c27d-4220-acac-08f8fae27547" />
 # Egypt Real Estate Pipeline
 
 An end-to-end data engineering pipeline that ingests live property listings
