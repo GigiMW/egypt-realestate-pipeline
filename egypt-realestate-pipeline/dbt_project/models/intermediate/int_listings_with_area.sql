@@ -17,9 +17,10 @@ keywords as (
 matches as (
     select
         l.url,
+        l.snapshot_date,
         k.area,
         row_number() over (
-            partition by l.url
+            partition by l.url, l.snapshot_date
             order by length(k.keyword) desc, k.area
         ) as match_rank
     from listings l
@@ -36,4 +37,5 @@ select
 from listings l
 left join matches m
     on l.url = m.url
+   and l.snapshot_date = m.snapshot_date
    and m.match_rank = 1

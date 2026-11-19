@@ -4,8 +4,10 @@ sources:
   - name: main
     tables:
       - name: raw_listings
-        description: "Raw property listings from Dubizzle Egypt"
+        description: "Raw property listings from Dubizzle Egypt, one row per listing per scrape"
         columns:
+          - name: snapshot_date
+            description: "Date of the scrape this row came from"
           - name: title
             description: "Listing title"
           - name: price_raw
@@ -35,10 +37,12 @@ models:
       - name: price_raw
         tests:
           - not_null
+      - name: snapshot_date
+        tests:
+          - not_null
       - name: url
         tests:
           - not_null
-          - unique
       - name: scraped_at
         tests:
           - not_null
@@ -50,19 +54,22 @@ models:
           - not_null
 
   - name: int_listings_with_area
-    description: "Listings mapped to a clean area using the location_areas seed"
+    description: "Listings mapped to a clean area using the location_areas seed (all snapshots)"
     columns:
       - name: url
         tests:
           - not_null
-          - unique
       - name: area
         tests:
           - not_null
 
   - name: mart_listings
-    description: "Enriched Dubizzle listings with price buckets"
+    description: "Listings from the latest scrape, with area and price bucket"
     columns:
+      - name: url
+        tests:
+          - not_null
+          - unique
       - name: title
         tests:
           - not_null
@@ -95,6 +102,27 @@ models:
           - unique
           - accepted_values:
               values: ['under_3m', '3m_to_5m', '5m_to_10m', '10m_plus']
+
+  - name: price_trends
+    description: "Listing count and price per sqm per scrape date and area ('All areas' = whole market)"
+    columns:
+      - name: snapshot_date
+        tests:
+          - not_null
+      - name: area
+        tests:
+          - not_null
+      - name: listing_count
+        tests:
+          - not_null
+
+  - name: listing_price_changes
+    description: "First vs. latest asking price for listings seen in more than one scrape"
+    columns:
+      - name: url
+        tests:
+          - not_null
+          - unique
 
 seeds:
   - name: location_areas

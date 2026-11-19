@@ -1,8 +1,13 @@
+-- Listings from the most recent scrape. See price_trends and
+-- listing_price_changes for history across snapshots.
+
 with base as (
     select * from {{ ref('int_listings_with_area') }}
+    where snapshot_date = (select max(snapshot_date) from {{ ref('int_listings_with_area') }})
 )
 
 select
+    snapshot_date,
     title,
     area,
     location as location_raw,

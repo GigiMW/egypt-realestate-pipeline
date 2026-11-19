@@ -1,4 +1,5 @@
 select
+    snapshot_date,
     title,
     price_raw,
     location,

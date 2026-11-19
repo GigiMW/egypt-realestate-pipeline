@@ -1,7 +1,8 @@
--- Price statistics per area (see int_listings_with_area for how areas are mapped).
+-- Price statistics per area for the most recent scrape (see int_listings_with_area for how areas are mapped).
 
 with base as (
     select * from {{ ref('int_listings_with_area') }}
+    where snapshot_date = (select max(snapshot_date) from {{ ref('int_listings_with_area') }})
 ),
 
 by_area as (

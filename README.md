@@ -5,14 +5,14 @@
 An end-to-end data engineering pipeline that scrapes apartment-for-sale listings
 from **Dubizzle Egypt**, loads them into **DuckDB**, models them with **dbt**, and
 runs daily on **Apache Airflow** inside **Docker**. The output is a small set of
-analytics tables on Cairo property prices: price per square meter, price buckets
-and average price by area.
+analytics tables on Cairo property prices: price per square meter, price buckets,
+average price by area, and how prices change between scrapes.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    A[Dubizzle Egypt] -->|requests + BeautifulSoup| B[raw_listings.json]
+    A[Dubizzle Egypt] -->|requests + BeautifulSoup| B[data/history/<br/>one JSON per day]
     B -->|load_to_duckdb.py| C[(DuckDB<br/>raw_listings)]
     C --> D[stg_listings]
     S[/location_areas seed/] --> I
@@ -20,7 +20,9 @@ flowchart LR
     I --> E[mart_listings]
     I --> F[avg_price_by_location]
     D --> G[price_distribution]
-    E & F & G -->|convert_to_csv.py| H[CSV exports]
+    I --> T[price_trends]
+    I --> P[listing_price_changes]
+    E & F & G & T & P -->|convert_to_csv.py| H[CSV exports]
 ```
 
 The Airflow DAG `egypt_realestate_pipeline` runs every day at 08:00:
@@ -48,16 +50,19 @@ empty data downstream. Every task retries once after 5 minutes.
 |-------------------------|---------|-------|-------------|
 | `stg_listings`          | staging | view  | Parses the raw price and area strings into numbers, computes EGP per sqm and drops implausible bedroom counts |
 | `int_listings_with_area`| intermediate | view | Maps each listing to a clean `area` (New Cairo, 6th of October, New Capital…) using the `location_areas` seed |
-| `mart_listings`         | mart    | table | One row per listing with its `area` and a `price_bucket` (`under_3m`, `3m_to_5m`, `5m_to_10m`, `10m_plus`) |
-| `avg_price_by_location` | mart    | table | Listing count, average and median price per sqm, and min/max price per area |
-| `price_distribution`    | mart    | table | Listing count and average price per price bucket |
+| `mart_listings`         | mart    | table | Latest scrape: one row per listing with its `area` and a `price_bucket` (`under_3m`, `3m_to_5m`, `5m_to_10m`, `10m_plus`) |
+| `avg_price_by_location` | mart    | table | Latest scrape: listing count, average and median price per sqm, and min/max price per area |
+| `price_distribution`    | mart    | table | Latest scrape: listing count and average price per price bucket |
+| `price_trends`          | mart    | table | **History:** listing count and median price per sqm for each scrape date and area (plus an `All areas` row), with the change since the previous scrape |
+| `listing_price_changes` | mart    | table | **History:** first vs. latest asking price for every ad seen in more than one scrape (price drops and rises) |
 
 ### Data quality tests
 
-`dbt test` runs **23 tests**:
+`dbt test` runs **30 tests**:
 
-- `not_null` on the key fields: title, URL, raw and parsed price, area and timestamp
-- `unique` on listing URLs, so the same ad can't be counted twice
+- `not_null` on the key fields: snapshot date, title, URL, raw and parsed price, area and timestamp
+- one row per listing per snapshot (a custom test), so the same ad can't be counted twice
+- `unique` on listing URLs in the latest-snapshot and price-change tables
 - `unique` on the aggregation keys (`area`, `price_bucket`)
 - `accepted_values` on `price_bucket` in both mart tables
 - `not_null` and `unique` on the seed's keywords
@@ -95,7 +100,10 @@ egypt-realestate-pipeline/
 │   │   └── location_areas.csv      # keyword → area lookup
 │   ├── dbt_project.yml
 │   └── profiles.yml                # DuckDB path from DUCKDB_PATH (default ../data)
-├── data/                           # Raw JSON + CSV outputs (the .duckdb file is git-ignored)
+├── data/
+│   ├── history/                    # One raw_listings_<YYYY-MM-DD>.json per scrape (source of truth)
+│   ├── raw_listings.json           # Copy of the latest scrape
+│   └── *.csv                       # Exported marts (the .duckdb file is git-ignored)
 ├── docker-compose.yml              # Reads secrets from .env
 ├── .github/workflows/ci.yml        # (repo root) CI: full pipeline on every push
 ├── .env.example                    # Template for your local .env (never commit .env)
@@ -156,11 +164,11 @@ pip install -r requirements.txt
 ```
 
 ```bash
-python scraper/dubizzle_scraper.py       # 1. scrape → data/raw_listings.json
-python scraper/load_to_duckdb.py         # 2. load → data/realestate.duckdb
+python scraper/dubizzle_scraper.py       # 1. scrape → data/history/raw_listings_<today>.json
+python scraper/load_to_duckdb.py         # 2. load all snapshots → data/realestate.duckdb
 
 cd dbt_project
-dbt build --profiles-dir .               # 3. load the seed, build 5 models, run 23 tests
+dbt build --profiles-dir .               # 3. load the seed, build 7 models, run 30 tests
 cd ..
 
 python conversion/convert_to_csv.py      # 5. export marts → data/*.csv
@@ -195,6 +203,25 @@ From the snapshot in `data/` (18 listings, mostly New Cairo):
 
 With 18 listings these numbers are illustrative only. Most areas have a single ad.
 
+## Price history
+
+Every scrape is saved as `data/history/raw_listings_<YYYY-MM-DD>.json`. If you scrape
+twice on the same day, the second run replaces that day's file. The loader rebuilds
+DuckDB from **all** of these files, so the JSON snapshots are the source of truth
+and the database can be deleted at any time.
+
+From the snapshots, dbt builds:
+
+- **`price_trends`**: median EGP/sqm per area for each scrape date, and how much it
+  moved since the previous scrape
+- **`listing_price_changes`**: every ad seen more than once, with its first and
+  latest asking price, so price cuts are easy to spot
+
+The latest-only tables (`mart_listings`, `avg_price_by_location` and
+`price_distribution`) automatically use the newest snapshot. The repo currently
+holds one snapshot (2026-04-30), so the history tables fill in as soon as the
+DAG runs on new days. Commit the new files in `data/history/` to keep them.
+
 ## Continuous integration
 
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push and pull
@@ -202,9 +229,9 @@ request:
 
 1. Installs the pinned dependencies on Python 3.12
 2. Checks that all Python files compile
-3. Loads the committed `data/raw_listings.json` into DuckDB (CI doesn't scrape
+3. Loads the committed snapshots in `data/history/` into DuckDB (CI doesn't scrape
    live, so builds don't depend on Dubizzle)
-4. Runs `dbt build`: the seed, all 5 models and all 23 tests
+4. Runs `dbt build`: the seed, all 7 models and all 30 tests
 5. Exports the CSVs
 6. Validates `docker-compose.yml`
 
@@ -226,8 +253,11 @@ request:
   seed end up as `Unknown`. Add the compound to `location_areas.csv` to fix them.
 - **The sample is small.** The scraper reads 3 pages (about 36 ads). Raising
   `MAX_PAGES` gives more reliable averages.
-- **Each run replaces the previous data.** Keeping a dated history would allow
-  price trends over time, for example with an incremental model or a dbt snapshot.
+- **History grows one file per day.** That's about 10 KB per scrape, which is fine
+  for years of daily runs. At a larger scale, Parquet files or a proper warehouse
+  would be a better fit.
+- **Dubizzle blocks cloud IPs.** The scraper stops with a clear "Security check"
+  error when that happens. Run it from a home or office connection.
 - **Docker installs packages on every start.** The Compose file uses
   `_PIP_ADDITIONAL_REQUIREMENTS`, which is fine locally. A production setup would
   build a custom image with the packages already installed.

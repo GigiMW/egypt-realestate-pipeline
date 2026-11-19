@@ -3,20 +3,23 @@ import sys
 import duckdb
 import pandas as pd
 
+TABLES = (
+	"mart_listings",
+	"avg_price_by_location",
+	"price_distribution",
+	"price_trends",
+	"listing_price_changes",
+)
+
 
 def convert(db_path: str, out_dir: str) -> None:
 	os.makedirs(out_dir, exist_ok=True)
 	con = duckdb.connect(db_path)
 	try:
-		con.execute("SELECT * FROM main.mart_listings").df().to_csv(
-			os.path.join(out_dir, "mart_listings.csv"), index=False
-		)
-		con.execute("SELECT * FROM main.avg_price_by_location").df().to_csv(
-			os.path.join(out_dir, "avg_price_by_location.csv"), index=False
-		)
-		con.execute("SELECT * FROM main.price_distribution").df().to_csv(
-			os.path.join(out_dir, "price_distribution.csv"), index=False
-		)
+		for table in TABLES:
+			con.execute(f"SELECT * FROM main.{table}").df().to_csv(
+				os.path.join(out_dir, f"{table}.csv"), index=False
+			)
 	finally:
 		con.close()
 

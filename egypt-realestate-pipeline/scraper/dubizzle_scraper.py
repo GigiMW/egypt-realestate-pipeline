@@ -24,6 +24,8 @@ ADS_PER_PAGE = 12
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(PROJECT_ROOT, "data")
 RAW_FILE = os.path.join(DATA_DIR, "raw_listings.json")
+# One file per scrape date; together they form the price history.
+HISTORY_DIR = os.path.join(DATA_DIR, "history")
 MAX_BEDROOMS = 20
 
 
@@ -31,14 +33,30 @@ def _now_iso():
     return datetime.now(timezone.utc).isoformat()
 
 
+class BlockedError(RuntimeError):
+    """Dubizzle answered with its bot-protection page instead of listings."""
+
+
+def _is_blocked_page(resp):
+    return resp.status_code in (403, 429, 503) and "security check" in resp.text[:5000].lower()
+
+
 def _fetch(url, params=None):
     try:
         resp = requests.get(url, params=params, headers=HEADERS, timeout=10)
-        resp.raise_for_status()
-        return resp.text
     except requests.RequestException as e:
         logger.error(f"Failed to fetch {url}: {e}")
         return ""
+    if _is_blocked_page(resp):
+        raise BlockedError(
+            f"Dubizzle returned its 'Security check' page (HTTP {resp.status_code}). "
+            "The site blocks this network (common for cloud/datacenter IPs); "
+            "run the scraper from a home connection."
+        )
+    if not resp.ok:
+        logger.error(f"Failed to fetch {url}: HTTP {resp.status_code}")
+        return ""
+    return resp.text
 
 
 def _extract_text_lines(soup):
@@ -226,11 +244,20 @@ if __name__ == "__main__":
         if not data:
             raise RuntimeError("No listings were scraped from Dubizzle")
 
-        os.makedirs(DATA_DIR, exist_ok=True)
-        with open(RAW_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        os.makedirs(HISTORY_DIR, exist_ok=True)
+        snapshot_file = os.path.join(
+            HISTORY_DIR, f"raw_listings_{datetime.now(timezone.utc):%Y-%m-%d}.json"
+        )
+        # raw_listings.json = latest scrape; history/ keeps one file per day
+        # (a second run on the same day replaces that day's file).
+        for path in (RAW_FILE, snapshot_file):
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
         logger.info(f"Successfully scraped {len(data)} listings")
-        logger.info(f"Saved to {RAW_FILE}")
+        logger.info(f"Saved to {RAW_FILE} and {snapshot_file}")
+    except BlockedError as e:
+        logger.error(str(e))
+        raise SystemExit(1)
     except Exception as e:
         logger.error(f"Scraper failed: {e}", exc_info=True)
         raise
