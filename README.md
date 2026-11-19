@@ -73,7 +73,8 @@ egypt-realestate-pipeline/
 │   ├── dbt_project.yml
 │   └── profiles.yml                # DuckDB path from DUCKDB_PATH (default ../data)
 ├── data/                           # Raw JSON + CSV outputs (the .duckdb file is git-ignored)
-├── docker-compose.yml
+├── docker-compose.yml              # Reads secrets from .env
+├── .env.example                    # Template for your local .env (never commit .env)
 └── requirements.txt
 ```
 
@@ -88,6 +89,25 @@ cd egypt-realestate-pipeline/egypt-realestate-pipeline
 
 Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/).
 
+**1. Create your `.env` file.** It holds your Airflow keys and admin password.
+Git ignores it, so it is never committed.
+
+```bash
+cp .env.example .env              # Windows: copy .env.example .env
+```
+
+Open `.env` and fill in the values. The two keys can be generated with:
+
+```bash
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+(The first command needs `pip install cryptography`.) Docker Compose refuses
+to start until all the required values are set.
+
+**2. Start Airflow:**
+
 ```bash
 docker compose up
 ```
@@ -95,7 +115,7 @@ docker compose up
 The first start takes a few minutes while the container installs dbt and
 DuckDB. Then:
 
-1. Open <http://localhost:8080> and sign in with `admin` / `admin`.
+1. Open <http://localhost:8080> and sign in with the username and password from your `.env`.
 2. Unpause the **`egypt_realestate_pipeline`** DAG and click **Trigger DAG**.
 3. When all five tasks are green, the fresh CSVs are in `data/`.
 
@@ -148,6 +168,7 @@ From the snapshot in `data/` (18 listings, mostly New Cairo):
 | Pages scraped| `MAX_PAGES` in `dubizzle_scraper.py` | 3 |
 | Ads per page | `ADS_PER_PAGE` in `dubizzle_scraper.py` | 12 |
 | Schedule     | `schedule_interval` in the DAG   | `0 8 * * *` (daily, 08:00) |
+| Airflow keys and login | `.env` (see `.env.example`) | none: required |
 
 ## Limitations and next steps
 

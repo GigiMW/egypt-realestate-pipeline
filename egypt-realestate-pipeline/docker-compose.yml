@@ -8,7 +8,11 @@ services:
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=sqlite:////opt/airflow/airflow.db
       - AIRFLOW__WEBSERVER__WEB_SERVER_HOST=0.0.0.0
-      - AIRFLOW__CORE__FERNET_KEY=REMOVED_FERNET_KEY
+      # Secrets come from the git-ignored .env file (copy .env.example to .env)
+      - AIRFLOW__CORE__FERNET_KEY=${AIRFLOW_FERNET_KEY:?Set AIRFLOW_FERNET_KEY in .env}
+      - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW_SECRET_KEY:?Set AIRFLOW_SECRET_KEY in .env}
+      - AIRFLOW_ADMIN_USER=${AIRFLOW_ADMIN_USER:-admin}
+      - AIRFLOW_ADMIN_PASSWORD=${AIRFLOW_ADMIN_PASSWORD:?Set AIRFLOW_ADMIN_PASSWORD in .env}
     volumes:
       - ./dags:/opt/airflow/dags
       - ./scraper:/opt/airflow/scraper
@@ -17,12 +21,13 @@ services:
       - ./data:/opt/airflow/data
       - ./logs:/opt/airflow/logs
     ports:
-      - "8080:8080"
+      # Only reachable from this computer, not from the rest of the network
+      - "127.0.0.1:8080:8080"
     command: >
       bash -c "
         airflow db init &&
         sleep 5 &&
-        airflow users create --username admin --password admin --firstname Engy --lastname DE --role Admin --email admin@example.com || true &&
+        airflow users create --username \"$$AIRFLOW_ADMIN_USER\" --password \"$$AIRFLOW_ADMIN_PASSWORD\" --firstname Admin --lastname User --role Admin --email admin@example.com || true &&
         airflow webserver --port 8080 &
         sleep 10 &&
         airflow scheduler
