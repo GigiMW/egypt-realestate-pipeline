@@ -12,7 +12,7 @@ average price by area, and how prices change between scrapes.
 
 ```mermaid
 flowchart LR
-    A[Dubizzle Egypt] -->|requests + BeautifulSoup| B[data/history/<br/>one JSON per day]
+    A[Dubizzle Egypt<br/>results pages] -->|JSON-LD, 3 requests| B[data/history/<br/>one JSON per day]
     B -->|load_to_duckdb.py| C[(DuckDB<br/>raw_listings)]
     C --> D[stg_listings]
     S[/location_areas seed/] --> I
@@ -34,11 +34,24 @@ scrape_listings → load_to_duckdb → dbt_run → dbt_test → convert_to_csv
 Each task fails loudly, so a broken step stops the run instead of passing
 empty data downstream. Every task retries once after 5 minutes.
 
+### How the scraper works
+
+Every Dubizzle results page embeds a [schema.org](https://schema.org/ItemList)
+`ItemList` in a JSON-LD `<script>` tag. It holds the title, price, size, bedrooms,
+bathrooms, compound and locality of every ad on the page. The scraper reads that
+instead of opening each ad, so a run is **3 requests** (about 140 listings), not
+one request per ad. It is also polite:
+
+- it waits 3–5 seconds between requests
+- it retries `429`/`503` responses after 10 s and then 30 s
+- it **stops** if Dubizzle asks it to wait longer than a minute (`Retry-After`)
+  or shows its "Security check" page, instead of retrying forever
+
 ## Tech stack
 
 | Layer            | Tool                        | Role                                        |
 |------------------|-----------------------------|---------------------------------------------|
-| Ingestion        | Python, requests, BeautifulSoup | Scrape listing pages and parse each ad  |
+| Ingestion        | Python, requests, BeautifulSoup | Read listings from the structured data on results pages |
 | Storage          | DuckDB                      | Embedded analytical database                |
 | Transformation   | dbt Core 1.7 + dbt-duckdb   | Staging and mart models, data tests         |
 | Orchestration    | Apache Airflow 2.9          | Daily schedule, retries, task dependencies  |
@@ -87,7 +100,7 @@ egypt-realestate-pipeline/
 ├── dags/
 │   └── realestate_pipeline.py      # Airflow DAG (5 tasks)
 ├── scraper/
-│   ├── dubizzle_scraper.py         # Scrapes listings → data/raw_listings.json
+│   ├── dubizzle_scraper.py         # Results pages → data/history/raw_listings_<date>.json
 │   └── load_to_duckdb.py           # Loads the JSON into DuckDB
 ├── conversion/
 │   └── convert_to_csv.py           # Exports the mart tables to CSV
@@ -100,6 +113,9 @@ egypt-realestate-pipeline/
 │   │   └── location_areas.csv      # keyword → area lookup
 │   ├── dbt_project.yml
 │   └── profiles.yml                # DuckDB path from DUCKDB_PATH (default ../data)
+├── tests/
+│   ├── test_scraper.py             # Offline unit tests for the parser (pytest)
+│   └── fixtures/results_page.html  # Trimmed real results page
 ├── data/
 │   ├── history/                    # One raw_listings_<YYYY-MM-DD>.json per scrape (source of truth)
 │   ├── raw_listings.json           # Copy of the latest scrape
@@ -229,11 +245,12 @@ request:
 
 1. Installs the pinned dependencies on Python 3.12
 2. Checks that all Python files compile
-3. Loads the committed snapshots in `data/history/` into DuckDB (CI doesn't scrape
+3. Runs the scraper's unit tests against a saved results page (no network)
+4. Loads the committed snapshots in `data/history/` into DuckDB (CI doesn't scrape
    live, so builds don't depend on Dubizzle)
-4. Runs `dbt build`: the seed, all 7 models and all 30 tests
-5. Exports the CSVs
-6. Validates `docker-compose.yml`
+5. Runs `dbt build`: the seed, all 7 models and all 30 tests
+6. Exports the CSVs
+7. Validates `docker-compose.yml`
 
 ## Configuration
 
@@ -251,13 +268,16 @@ request:
   blocks the request, the scrape task fails and the run stops.
 - **Area mapping is keyword-based.** Ads that name a compound missing from the
   seed end up as `Unknown`. Add the compound to `location_areas.csv` to fix them.
-- **The sample is small.** The scraper reads 3 pages (about 36 ads). Raising
-  `MAX_PAGES` gives more reliable averages.
+- **The sample is modest.** The scraper reads 3 results pages (about 140 ads).
+  Raising `MAX_PAGES` gives more reliable averages. Keep the delay between
+  requests if you do.
 - **History grows one file per day.** That's about 10 KB per scrape, which is fine
   for years of daily runs. At a larger scale, Parquet files or a proper warehouse
   would be a better fit.
 - **Dubizzle blocks cloud IPs.** The scraper stops with a clear "Security check"
   error when that happens. Run it from a home or office connection.
+- **The scraper relies on Dubizzle's structured data.** If Dubizzle removes the
+  JSON-LD from its results pages, the scraper says so and stops.
 - **Docker installs packages on every start.** The Compose file uses
   `_PIP_ADDITIONAL_REQUIREMENTS`, which is fine locally. A production setup would
   build a custom image with the packages already installed.

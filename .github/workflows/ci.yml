@@ -33,6 +33,11 @@ jobs:
       - name: Check Python files compile
         run: python -m compileall -q scraper conversion dags
 
+      - name: Scraper unit tests (offline, uses a saved results page)
+        run: |
+          pip install pytest
+          python -m pytest -q tests
+
       # CI uses the committed data/raw_listings.json instead of scraping live,
       # so builds don't depend on Dubizzle being reachable.
       - name: Load sample listings into DuckDB

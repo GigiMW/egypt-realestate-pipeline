@@ -7,3 +7,5 @@ logs/
 target/
 dbt_packages/
 .dbt/
+# Saved pages used for debugging the scraper
+/page*.html

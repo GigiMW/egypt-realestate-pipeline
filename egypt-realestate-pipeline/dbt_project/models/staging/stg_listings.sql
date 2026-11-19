@@ -6,7 +6,9 @@ select
     area_sqm,
     case when bedrooms between 1 and 20 then bedrooms end as bedrooms,
     bathrooms,
-    url,
+    -- Dubizzle links ads as both /en/ad/... and /ad/...; normalise so the same
+    -- ad matches across snapshots.
+    replace(url, '/en/ad/', '/ad/') as url,
     cast(scraped_at as timestamp) as scraped_at,
     page,
     try_cast(replace(regexp_extract(price_raw, '([0-9][0-9,]*)', 1), ',', '') as double) as price_egp,

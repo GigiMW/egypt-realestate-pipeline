@@ -1,9 +1,11 @@
 -- Map each listing to a clean area name.
 --
--- The scraped `location` is free text and often junk ("the", "very", ...),
--- so we search both the title and the location for known keywords from the
--- `location_areas` seed. When several keywords match, the longest one wins:
--- "mountain view icity october" beats "mountain view", "suez road" beats "suez".
+-- Both the title and `location` are searched for keywords from the
+-- `location_areas` seed. Newer scrapes carry Dubizzle's structured address
+-- ("compound, locality") in `location`; older ones only have free text, which
+-- is often junk ("the", "very"). The longest matching keyword wins
+-- ("mountain view icity october" beats "mountain view", "new giza" beats "giza");
+-- on a tie, a match in `location` beats one in the title.
 
 with listings as (
     select * from {{ ref('stg_listings') }}
@@ -14,21 +16,24 @@ keywords as (
     from {{ ref('location_areas') }}
 ),
 
+texts as (
+    select url, snapshot_date, 1 as source_rank, lower(coalesce(location, '')) as txt from listings
+    union all
+    select url, snapshot_date, 2 as source_rank, lower(coalesce(title, '')) as txt from listings
+),
+
 matches as (
     select
-        l.url,
-        l.snapshot_date,
+        t.url,
+        t.snapshot_date,
         k.area,
         row_number() over (
-            partition by l.url, l.snapshot_date
-            order by length(k.keyword) desc, k.area
+            partition by t.url, t.snapshot_date
+            order by length(k.keyword) desc, t.source_rank, k.area
         ) as match_rank
-    from listings l
+    from texts t
     join keywords k
-        on regexp_matches(
-            lower(coalesce(l.title, '') || ' | ' || coalesce(l.location, '')),
-            '\b' || k.keyword || '\b'
-        )
+        on regexp_matches(t.txt, '\b' || k.keyword || '\b')
 )
 
 select
