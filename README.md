@@ -187,7 +187,17 @@ cd dbt_project
 dbt build --profiles-dir .               # 3. load the seed, build 7 models, run 30 tests
 cd ..
 
-python conversion/convert_to_csv.py      # 5. export marts → data/*.csv
+python conversion/convert_to_csv.py      # 4. export marts → data/*.csv
+```
+
+Run the scraper's unit tests (offline) with `pip install pytest` and then `python -m pytest tests`.
+
+If Dubizzle is rate-limiting you, save a results page in your browser (or with
+`requests`) and turn it into today's snapshot without any further requests:
+
+```bash
+python scraper/dubizzle_scraper.py --file page.html          # preview what it finds
+python scraper/dubizzle_scraper.py --file page.html --save   # store as today's snapshot
 ```
 
 To explore the models and the lineage graph:
@@ -199,25 +209,26 @@ dbt docs generate --profiles-dir . && dbt docs serve --profiles-dir . --port 808
 
 ## Sample output
 
-From the snapshot in `data/` (18 listings, mostly New Cairo):
+From the live scrape on 2026-11-19 (46 listings from one results page):
 
 | Price bucket | Listings | Avg price (EGP) | Avg EGP / sqm |
 |--------------|---------:|----------------:|--------------:|
-| 10M+         | 9        | 14,277,111      | 81,450        |
-| 5M – 10M     | 8        | 6,652,125       | 40,650        |
-| 3M – 5M      | 1        | 4,700,000       | 42,727        |
+| 5M – 10M     | 32       | 7,282,211       | 48,921        |
+| 10M+         | 7        | 12,462,857      | 62,455        |
+| 3M – 5M      | 4        | 3,862,500       | 32,753        |
+| Under 3M     | 3        | 2,283,333       | 16,056        |
 
 | Area           | Listings | Avg EGP / sqm | Median EGP / sqm |
 |----------------|---------:|--------------:|-----------------:|
-| New Cairo      | 10       | 71,168        | 73,316           |
-| 6th of October | 3        | 36,575        | 34,595           |
-| New Giza       | 1        | 91,837        | 91,837           |
-| Suez           | 1        | 61,111        | 61,111           |
-| El Rehab       | 1        | 54,000        | 54,000           |
-| Mostakbal City | 1        | 42,727        | 42,727           |
-| New Capital    | 1        | 29,900        | 29,900           |
+| New Cairo      | 21       | 50,777        | 49,275           |
+| Mostakbal City | 5        | 46,556        | 39,560           |
+| El Shorouk     | 4        | 52,508        | 55,735           |
+| New Capital    | 3        | 43,378        | 44,000           |
+| Giza           | 3        | 21,339        | 16,429           |
+| Heliopolis     | 2        | 87,368        | 87,368           |
 
-With 18 listings these numbers are illustrative only. Most areas have a single ad.
+Areas with only one or two ads are noisy. Treat these as a snapshot of what was
+listed that day, not as market prices.
 
 ## Price history
 
@@ -234,9 +245,14 @@ From the snapshots, dbt builds:
   latest asking price, so price cuts are easy to spot
 
 The latest-only tables (`mart_listings`, `avg_price_by_location` and
-`price_distribution`) automatically use the newest snapshot. The repo currently
-holds one snapshot (2026-04-30), so the history tables fill in as soon as the
-DAG runs on new days. Commit the new files in `data/history/` to keep them.
+`price_distribution`) automatically use the newest snapshot. The repo holds two
+snapshots so far: a small sample from 2026-04-30 and a live scrape from
+2026-11-19. Commit new files in `data/history/` to keep them.
+
+Compare snapshots with care. A change in an area's median can come from a
+different mix of ads that day, not only from prices moving.
+`listing_price_changes` tracks the **same** ad over time, so it is the cleaner
+signal.
 
 ## Continuous integration
 
@@ -257,8 +273,8 @@ request:
 | Setting      | Where                            | Default |
 |--------------|----------------------------------|---------|
 | `DUCKDB_PATH`| environment variable             | `data/realestate.duckdb` (`/opt/airflow/data/...` in Docker) |
-| Pages scraped| `MAX_PAGES` in `dubizzle_scraper.py` | 3 |
-| Ads per page | `ADS_PER_PAGE` in `dubizzle_scraper.py` | 12 |
+| Pages scraped| `MAX_PAGES` in `dubizzle_scraper.py` | 3 (about 46 ads each) |
+| Delay between requests | `REQUEST_DELAY_SECONDS` in `dubizzle_scraper.py` | 3–5 s |
 | Schedule     | `schedule_interval` in the DAG   | `0 8 * * *` (daily, 08:00) |
 | Airflow keys and login | `.env` (see `.env.example`) | none: required |
 
