@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pipeline:
+    name: Build and test pipeline
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: egypt-realestate-pipeline
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: egypt-realestate-pipeline/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Check Python files compile
+        run: python -m compileall -q scraper conversion dags
+
+      # CI uses the committed data/raw_listings.json instead of scraping live,
+      # so builds don't depend on Dubizzle being reachable.
+      - name: Load sample listings into DuckDB
+        run: python scraper/load_to_duckdb.py
+
+      - name: dbt build (seed, run models, run tests)
+        working-directory: egypt-realestate-pipeline/dbt_project
+        run: dbt build --profiles-dir .
+
+      - name: Export marts to CSV
+        run: python conversion/convert_to_csv.py
+
+      - name: Validate docker-compose.yml
+        env:
+          AIRFLOW_FERNET_KEY: ci-placeholder
+          AIRFLOW_SECRET_KEY: ci-placeholder
+          AIRFLOW_ADMIN_PASSWORD: ci-placeholder
+        run: docker compose config --quiet

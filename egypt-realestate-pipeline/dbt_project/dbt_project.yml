@@ -33,6 +33,14 @@ models:
   dbt_project:
     staging:
       +materialized: view
+    intermediate:
+      +materialized: view
     marts:
       +materialized: table
 
+seeds:
+  dbt_project:
+    location_areas:
+      +column_types:
+        keyword: varchar
+        area: varchar

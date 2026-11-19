@@ -38,6 +38,7 @@ models:
       - name: url
         tests:
           - not_null
+          - unique
       - name: scraped_at
         tests:
           - not_null
@@ -48,10 +49,24 @@ models:
         tests:
           - not_null
 
+  - name: int_listings_with_area
+    description: "Listings mapped to a clean area using the location_areas seed"
+    columns:
+      - name: url
+        tests:
+          - not_null
+          - unique
+      - name: area
+        tests:
+          - not_null
+
   - name: mart_listings
     description: "Enriched Dubizzle listings with price buckets"
     columns:
       - name: title
+        tests:
+          - not_null
+      - name: area
         tests:
           - not_null
       - name: price_bucket
@@ -61,9 +76,9 @@ models:
               values: ['under_3m', '3m_to_5m', '5m_to_10m', '10m_plus']
 
   - name: avg_price_by_location
-    description: "Average Dubizzle listing price by location"
+    description: "Price statistics per area"
     columns:
-      - name: location
+      - name: area
         tests:
           - not_null
           - unique
@@ -80,3 +95,15 @@ models:
           - unique
           - accepted_values:
               values: ['under_3m', '3m_to_5m', '5m_to_10m', '10m_plus']
+
+seeds:
+  - name: location_areas
+    description: "Keyword → area lookup used to clean the free-text location"
+    columns:
+      - name: keyword
+        tests:
+          - not_null
+          - unique
+      - name: area
+        tests:
+          - not_null

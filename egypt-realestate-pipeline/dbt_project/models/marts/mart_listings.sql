@@ -1,10 +1,11 @@
 with base as (
-    select * from {{ ref('stg_listings') }}
+    select * from {{ ref('int_listings_with_area') }}
 )
 
 select
     title,
-    location,
+    area,
+    location as location_raw,
     price_raw,
     price_egp,
     area_sqm,
