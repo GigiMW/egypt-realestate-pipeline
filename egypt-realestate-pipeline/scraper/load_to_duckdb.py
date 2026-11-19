@@ -18,6 +18,11 @@ def load():
     if not records:
         sys.exit("No records to load.")
 
+    # The database only holds derived data (raw table + dbt models), so start
+    # from a fresh file each run. This also avoids "unsupported version" errors
+    # when the file was last written by a different DuckDB version.
+    if os.path.exists(DB_FILE):
+        os.remove(DB_FILE)
     con = duckdb.connect(DB_FILE)
 
     con.execute("DROP TABLE IF EXISTS raw_listings")
