@@ -26,6 +26,7 @@ ADS_PER_PAGE = 12
 REQUEST_DELAY_SECONDS = (3.0, 5.0)   # random pause between requests
 RETRY_BACKOFF_SECONDS = (10, 30)     # waits before each retry on 429/503
 MAX_CONSECUTIVE_FAILURES = 5         # stop instead of hammering the site
+MAX_RETRY_AFTER_SECONDS = 60         # longer Retry-After = we're rate-limited; stop
 # Resolve paths from the project root so the script works no matter where it is
 # launched from (Airflow runs it with a different working directory).
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -42,6 +43,10 @@ def _now_iso():
 
 class BlockedError(RuntimeError):
     """Dubizzle answered with its bot-protection page instead of listings."""
+
+
+class RateLimitedError(RuntimeError):
+    """Dubizzle asked us to wait longer than we are willing to (Retry-After)."""
 
 
 SESSION = requests.Session()
@@ -94,6 +99,11 @@ def _fetch(url, params=None):
         if resp.status_code in (429, 503) and attempt < len(RETRY_BACKOFF_SECONDS):
             retry_after = resp.headers.get("Retry-After", "")
             wait = int(retry_after) if retry_after.isdigit() else RETRY_BACKOFF_SECONDS[attempt]
+            if wait > MAX_RETRY_AFTER_SECONDS:
+                raise RateLimitedError(
+                    f"Dubizzle rate-limited us (HTTP {resp.status_code}, Retry-After: "
+                    f"{wait}s) on {url}. Stopping; try again after that time."
+                )
             logger.warning(
                 f"HTTP {resp.status_code} ({_page_title(resp.text)!r}) for {url}; "
                 f"retrying in {wait}s"
@@ -282,6 +292,10 @@ def scrape():
                 record = _parse_ad(url, page_number)
             except BlockedError:
                 raise
+            except RateLimitedError as exc:
+                logger.error(str(exc))
+                logger.info(f"Total scraped: {len(records)}")
+                return records
             except Exception as exc:
                 logger.warning(f"Skipped {url}: {exc}")
                 record = None
