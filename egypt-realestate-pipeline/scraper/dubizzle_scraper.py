@@ -256,11 +256,27 @@ def scrape():
     return records
 
 
+def save_snapshot(data):
+    """Write the scrape to raw_listings.json and today's history file."""
+    os.makedirs(HISTORY_DIR, exist_ok=True)
+    snapshot_file = os.path.join(
+        HISTORY_DIR, f"raw_listings_{datetime.now(timezone.utc):%Y-%m-%d}.json"
+    )
+    # raw_listings.json = latest scrape; history/ keeps one file per day
+    # (a second run on the same day replaces that day's file).
+    for path in (RAW_FILE, snapshot_file):
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    logger.info(f"Saved {len(data)} listings to {RAW_FILE} and {snapshot_file}")
+
+
 def check_saved_page(path):
-    """Parse a saved results page and print what was found (no network)."""
+    """Parse a results page saved earlier today and print what was found (no network)."""
     with open(path, encoding="utf-8") as f:
         html = f.read()
-    records = parse_results_page(html, 1, datetime.now(timezone.utc).isoformat())
+    # Use the file's modification time as the scrape time.
+    saved_at = datetime.fromtimestamp(os.path.getmtime(path), tz=timezone.utc).isoformat()
+    records = parse_results_page(html, 1, saved_at)
     print(f"{len(records)} listings found in {path}")
     print(f"JSON-LD types on the page: {_describe_json_ld(html)}")
     for r in records[:5]:
@@ -271,25 +287,22 @@ def check_saved_page(path):
 if __name__ == "__main__":
     import sys
 
-    if len(sys.argv) == 3 and sys.argv[1] == "--file":
-        raise SystemExit(0 if check_saved_page(sys.argv[2]) else 1)
+    # python dubizzle_scraper.py --file page.html [--save]
+    #   Parse a results page saved earlier (e.g. while rate-limited). With
+    #   --save, store it as today's snapshot, like a normal scrape would.
+    if len(sys.argv) in (3, 4) and sys.argv[1] == "--file":
+        found = check_saved_page(sys.argv[2])
+        if found and sys.argv[3:] == ["--save"]:
+            save_snapshot(found)
+        raise SystemExit(0 if found else 1)
 
     try:
         data = scrape()
         if not data:
             raise RuntimeError("No listings were scraped from Dubizzle")
 
-        os.makedirs(HISTORY_DIR, exist_ok=True)
-        snapshot_file = os.path.join(
-            HISTORY_DIR, f"raw_listings_{datetime.now(timezone.utc):%Y-%m-%d}.json"
-        )
-        # raw_listings.json = latest scrape; history/ keeps one file per day
-        # (a second run on the same day replaces that day's file).
-        for path in (RAW_FILE, snapshot_file):
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
         logger.info(f"Successfully scraped {len(data)} listings")
-        logger.info(f"Saved to {RAW_FILE} and {snapshot_file}")
+        save_snapshot(data)
     except BlockedError as e:
         logger.error(str(e))
         raise SystemExit(1)
