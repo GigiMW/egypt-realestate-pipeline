@@ -1,7 +1,9 @@
 import json
 import logging
 import os
+import random
 import re
+import time
 from datetime import datetime, timezone
 from urllib.parse import urljoin
 
@@ -19,6 +21,11 @@ HEADERS = {
 }
 MAX_PAGES = 3
 ADS_PER_PAGE = 12
+
+# Be polite: Dubizzle throttles clients that request pages too quickly.
+REQUEST_DELAY_SECONDS = (3.0, 5.0)   # random pause between requests
+RETRY_BACKOFF_SECONDS = (10, 30)     # waits before each retry on 429/503
+MAX_CONSECUTIVE_FAILURES = 5         # stop instead of hammering the site
 # Resolve paths from the project root so the script works no matter where it is
 # launched from (Airflow runs it with a different working directory).
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -37,26 +44,66 @@ class BlockedError(RuntimeError):
     """Dubizzle answered with its bot-protection page instead of listings."""
 
 
+SESSION = requests.Session()
+SESSION.headers.update(HEADERS)
+_last_request_at = 0.0
+
+
+def _page_title(text):
+    match = re.search(r"<title>(.*?)</title>", text or "", re.IGNORECASE | re.DOTALL)
+    return match.group(1).strip() if match else "no title"
+
+
 def _is_blocked_page(resp):
-    return resp.status_code in (403, 429, 503) and "security check" in resp.text[:5000].lower()
+    return "security check" in _page_title(resp.text).lower()
+
+
+def _polite_wait():
+    """Keep a random 3-5 s gap between consecutive requests."""
+    global _last_request_at
+    gap = random.uniform(*REQUEST_DELAY_SECONDS)
+    elapsed = time.monotonic() - _last_request_at
+    if elapsed < gap:
+        time.sleep(gap - elapsed)
+    _last_request_at = time.monotonic()
 
 
 def _fetch(url, params=None):
-    try:
-        resp = requests.get(url, params=params, headers=HEADERS, timeout=10)
-    except requests.RequestException as e:
-        logger.error(f"Failed to fetch {url}: {e}")
-        return ""
-    if _is_blocked_page(resp):
-        raise BlockedError(
-            f"Dubizzle returned its 'Security check' page (HTTP {resp.status_code}). "
-            "The site blocks this network (common for cloud/datacenter IPs); "
-            "run the scraper from a home connection."
-        )
-    if not resp.ok:
-        logger.error(f"Failed to fetch {url}: HTTP {resp.status_code}")
-        return ""
-    return resp.text
+    """Return the page HTML, or None if it could not be fetched.
+
+    Retries 429/503 responses with a growing back-off (honouring Retry-After).
+    Raises BlockedError when Dubizzle serves its bot-protection page.
+    """
+    for attempt in range(len(RETRY_BACKOFF_SECONDS) + 1):
+        _polite_wait()
+        try:
+            resp = SESSION.get(url, params=params, timeout=20)
+        except requests.RequestException as e:
+            logger.error(f"Failed to fetch {url}: {e}")
+            return None
+
+        if _is_blocked_page(resp):
+            raise BlockedError(
+                f"Dubizzle returned its 'Security check' page (HTTP {resp.status_code}). "
+                "The site is blocking this network or client; try again later or "
+                "from a different connection."
+            )
+        if resp.ok:
+            return resp.text
+
+        if resp.status_code in (429, 503) and attempt < len(RETRY_BACKOFF_SECONDS):
+            retry_after = resp.headers.get("Retry-After", "")
+            wait = int(retry_after) if retry_after.isdigit() else RETRY_BACKOFF_SECONDS[attempt]
+            logger.warning(
+                f"HTTP {resp.status_code} ({_page_title(resp.text)!r}) for {url}; "
+                f"retrying in {wait}s"
+            )
+            time.sleep(wait)
+            continue
+
+        logger.error(f"Failed to fetch {url}: HTTP {resp.status_code} ({_page_title(resp.text)!r})")
+        return None
+    return None
 
 
 def _extract_text_lines(soup):
@@ -64,11 +111,13 @@ def _extract_text_lines(soup):
 
 
 def _extract_listing_urls(html):
-    soup = BeautifulSoup(html, "html.parser")
-    return [
-        urljoin(DOMAIN, a["href"])
+    """Ad URLs on a results page, without duplicates (each card links twice)."""
+    soup = BeautifulSoup(html or "", "html.parser")
+    urls = (
+        urljoin(DOMAIN, a["href"]).split("?")[0].split("#")[0]
         for a in soup.find_all("a", href=re.compile(r"/en/ad/"))
-    ]
+    )
+    return list(dict.fromkeys(urls))
 
 
 def _match(pattern, text):
@@ -169,6 +218,8 @@ def _extract_bedrooms(json_ld, title, description, page_text):
 
 def _parse_ad(url, page_number):
     html = _fetch(url)
+    if html is None:
+        return None
     soup = BeautifulSoup(html, "html.parser")
 
     title_tag = soup.find("h1")
@@ -214,25 +265,42 @@ def scrape():
     logger.info("Starting Dubizzle scraper...")
     records = []
     seen_urls = set()
+    consecutive_failures = 0
 
     for page_number in range(1, MAX_PAGES + 1):
         logger.info(f"Scraping page {page_number}...")
         html = _fetch(BASE_URL, params={"page": page_number})
-        listing_urls = _extract_listing_urls(html)
+        if html is None:
+            logger.error(f"Could not load results page {page_number}; stopping.")
+            break
+        listing_urls = [u for u in _extract_listing_urls(html) if u not in seen_urls]
+        logger.info(f"Found {len(listing_urls)} new ads on page {page_number}")
 
         for url in listing_urls[:ADS_PER_PAGE]:
-            if url in seen_urls:
-                continue
-
+            seen_urls.add(url)
             try:
                 record = _parse_ad(url, page_number)
+            except BlockedError:
+                raise
             except Exception as exc:
                 logger.warning(f"Skipped {url}: {exc}")
+                record = None
+
+            if record is None:
+                consecutive_failures += 1
+                if consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
+                    logger.error(
+                        f"{consecutive_failures} ads in a row failed; Dubizzle is "
+                        "throttling us. Stopping early and keeping what we have."
+                    )
+                    logger.info(f"Total scraped: {len(records)}")
+                    return records
                 continue
 
+            consecutive_failures = 0
             if record.get("title") and record.get("price_raw"):
-                seen_urls.add(url)
                 records.append(record)
+                logger.info(f"  [{len(records)}] {record['title'][:70]}")
 
     logger.info(f"Total scraped: {len(records)}")
     return records
