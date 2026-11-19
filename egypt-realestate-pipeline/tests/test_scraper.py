@@ -72,3 +72,17 @@ def test_long_retry_after_stops_instead_of_sleeping(monkeypatch):
     monkeypatch.setattr(scraper.time, "sleep", lambda s: pytest.fail(f"slept {s}s"))
     with pytest.raises(scraper.RateLimitedError):
         scraper._fetch(scraper.BASE_URL)
+
+
+def test_item_list_nested_inside_another_object():
+    """Real pages may wrap the ItemList, e.g. in a CollectionPage's mainEntity."""
+    html = """<script type="application/ld+json">
+    {"@context": "https://schema.org", "@type": ["CollectionPage"],
+     "mainEntity": {"@type": "ItemList", "itemListElement": [
+        {"@type": "ListItem", "item": {"@type": "RealEstateListing", "name": "Flat in Madinaty",
+         "url": "https://www.dubizzle.com.eg/ad/flat-ID9.html",
+         "mainEntity": {"address": {"addressLocality": "Madinaty"}},
+         "offers": {"price": 2500000, "priceCurrency": "EGP"}}}]}}
+    </script>"""
+    records = scraper.parse_results_page(html, 1, SCRAPED_AT)
+    assert [r["location"] for r in records] == ["Madinaty"]

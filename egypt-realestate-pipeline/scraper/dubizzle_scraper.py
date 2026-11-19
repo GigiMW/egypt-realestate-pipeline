@@ -116,29 +116,49 @@ def _fetch(url, params=None):
 # --------------------------------------------------------------------------- #
 # Parsing
 # --------------------------------------------------------------------------- #
-def _json_ld_blocks(html):
-    """Yield every parsed JSON-LD object on the page."""
+def _json_ld_documents(html):
+    """Parsed content of every JSON-LD <script> on the page."""
     soup = BeautifulSoup(html or "", "html.parser")
-    for tag in soup.find_all("script", type="application/ld+json"):
+    for tag in soup.find_all("script", type=re.compile(r"ld\+json", re.IGNORECASE)):
+        raw = tag.string or tag.get_text() or ""
         try:
-            data = json.loads(tag.string or tag.get_text() or "")
-        except json.JSONDecodeError:
-            continue
-        stack = [data]
-        while stack:
-            node = stack.pop()
-            if isinstance(node, list):
-                stack.extend(node)
-            elif isinstance(node, dict):
-                yield node
-                if "@graph" in node:
-                    stack.append(node["@graph"])
+            yield json.loads(raw)
+        except json.JSONDecodeError as exc:
+            logger.debug(f"Skipping unparsable JSON-LD block: {exc}")
+
+
+def _walk(node):
+    """Every dict nested anywhere inside a JSON value (depth-first)."""
+    stack = [node]
+    while stack:
+        current = stack.pop()
+        if isinstance(current, dict):
+            yield current
+            stack.extend(current.values())
+        elif isinstance(current, list):
+            stack.extend(current)
+
+
+def _types(node):
+    t = node.get("@type")
+    return set(t) if isinstance(t, list) else {t}
+
+
+def _describe_json_ld(html):
+    """Short summary of the JSON-LD on a page, for error messages."""
+    found = sorted({str(t) for doc in _json_ld_documents(html) for n in _walk(doc) for t in _types(n) if t})
+    return ", ".join(found[:15]) or "none"
 
 
 def _listing_items(html):
-    """The RealEstateListing entries from the page's schema.org ItemList."""
-    for block in _json_ld_blocks(html):
-        if block.get("@type") != "ItemList":
+    """The listing entries from the page's schema.org ItemList(s).
+
+    The ItemList may sit at the top level or be nested inside another object
+    (e.g. a CollectionPage), so the whole JSON tree is searched.
+    """
+    blocks = (n for doc in _json_ld_documents(html) for n in _walk(doc))
+    for block in blocks:
+        if "ItemList" not in _types(block):
             continue
         for element in block.get("itemListElement") or []:
             item = element.get("item") if isinstance(element, dict) else None
@@ -222,7 +242,8 @@ def scrape():
         if not page_records:
             logger.error(
                 f"No listings found in the structured data on page {page_number}. "
-                "Dubizzle may have changed its page layout."
+                "Dubizzle may have changed its page layout. "
+                f"JSON-LD types on the page: {_describe_json_ld(html)}"
             )
             break
 
@@ -235,7 +256,24 @@ def scrape():
     return records
 
 
+def check_saved_page(path):
+    """Parse a saved results page and print what was found (no network)."""
+    with open(path, encoding="utf-8") as f:
+        html = f.read()
+    records = parse_results_page(html, 1, datetime.now(timezone.utc).isoformat())
+    print(f"{len(records)} listings found in {path}")
+    print(f"JSON-LD types on the page: {_describe_json_ld(html)}")
+    for r in records[:5]:
+        print(f"  {r['price_raw']:>16} | {r['area_sqm'] or '?':>8} | {r['location']} | {r['title'][:50]}")
+    return records
+
+
 if __name__ == "__main__":
+    import sys
+
+    if len(sys.argv) == 3 and sys.argv[1] == "--file":
+        raise SystemExit(0 if check_saved_page(sys.argv[2]) else 1)
+
     try:
         data = scrape()
         if not data:
