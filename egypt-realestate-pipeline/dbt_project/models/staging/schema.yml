@@ -57,6 +57,8 @@ models:
       - name: price_bucket
         tests:
           - not_null
+          - accepted_values:
+              values: ['under_3m', '3m_to_5m', '5m_to_10m', '10m_plus']
 
   - name: avg_price_by_location
     description: "Average Dubizzle listing price by location"
@@ -75,3 +77,6 @@ models:
       - name: price_bucket
         tests:
           - not_null
+          - unique
+          - accepted_values:
+              values: ['under_3m', '3m_to_5m', '5m_to_10m', '10m_plus']

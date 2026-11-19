@@ -1,21 +1,22 @@
 import duckdb
 import json
 import os
+import sys
 
-RAW_FILE = "data/raw_listings.json"
-DB_FILE  = "data/realestate.duckdb"
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RAW_FILE = os.path.join(PROJECT_ROOT, "data", "raw_listings.json")
+DB_FILE = os.environ.get("DUCKDB_PATH", os.path.join(PROJECT_ROOT, "data", "realestate.duckdb"))
 
 def load():
     if not os.path.exists(RAW_FILE):
-        print(f"File not found: {RAW_FILE}")
-        return
+        # Fail loudly so Airflow marks the task as failed instead of "success".
+        sys.exit(f"File not found: {RAW_FILE}")
 
     with open(RAW_FILE, "r", encoding="utf-8") as f:
         records = json.load(f)
 
     if not records:
-        print("No records to load.")
-        return
+        sys.exit("No records to load.")
 
     con = duckdb.connect(DB_FILE)
 
@@ -60,7 +61,7 @@ def load():
         LIMIT 10
     """).fetchall()
     for row in rows:
-        print(f"  {row[0][:55]:55} | {row[1]} | {row[2]}")
+        print(f"  {(row[0] or '')[:55]:55} | {row[1]} | {row[2]}")
 
     con.close()
 

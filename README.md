@@ -71,7 +71,7 @@ Apache Airflow DAG (daily @ 8am)
 
 ```bash
 # Clone and setup
-git clone https://github.com/YOUR_USERNAME/egypt-realestate-pipeline.git
+git clone https://github.com/GigiMW/egypt-realestate-pipeline.git
 cd egypt-realestate-pipeline
 python -m venv venv
 venv\Scripts\activate        # Windows
@@ -85,7 +85,7 @@ python scraper/load_to_duckdb.py     # Load to DuckDB
 # Transform with dbt
 cd dbt_project
 dbt run      # Build all 4 models
-dbt test     # Run 13 data quality tests
+dbt test     # Run 15 data quality tests
 dbt docs serve  # View lineage + docs at localhost:8080
 ```
 
@@ -98,11 +98,11 @@ docker-compose up
 # Trigger DAG: egypt_realestate_pipeline
 ```
 
-## Data Quality Tests (13 total)
+## Data Quality Tests (15 total)
 
 - `not_null` on all critical fields (title, price, area, url, scraped_at)
 - `unique` on location and price_bucket aggregation keys
-- `accepted_values` on price_bucket enum
+- `accepted_values` on price_bucket in both mart_listings and price_distribution
 
 ## Project Structure
 egypt-realestate-pipeline/

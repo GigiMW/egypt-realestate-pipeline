@@ -1,11 +1,9 @@
-version: '3.8'
-
 services:
   airflow:
     image: apache/airflow:2.9.0
     environment:
       - _PIP_ADDITIONAL_REQUIREMENTS=duckdb==1.5.2 dbt-core==1.7.0 dbt-duckdb==1.7.0 requests beautifulsoup4 pandas
-      # ... rest of your env vars
+      - DUCKDB_PATH=/opt/airflow/data/realestate.duckdb
       - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=sqlite:////opt/airflow/airflow.db
@@ -14,6 +12,7 @@ services:
     volumes:
       - ./dags:/opt/airflow/dags
       - ./scraper:/opt/airflow/scraper
+      - ./conversion:/opt/airflow/conversion
       - ./dbt_project:/opt/airflow/dbt_project
       - ./data:/opt/airflow/data
       - ./logs:/opt/airflow/logs

@@ -3,4 +3,6 @@ dbt_project:
   outputs:
     dev:
       type: duckdb
-      path: /opt/airflow/data/realestate.duckdb
+      # Docker/Airflow sets DUCKDB_PATH=/opt/airflow/data/realestate.duckdb.
+      # Locally (running dbt from inside dbt_project/) it falls back to ../data.
+      path: "{{ env_var('DUCKDB_PATH', '../data/realestate.duckdb') }}"

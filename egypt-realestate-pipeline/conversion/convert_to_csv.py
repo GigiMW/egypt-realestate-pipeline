@@ -25,7 +25,7 @@ def main():
 	# Resolve project root (assumes this file lives under <project>/conversion)
 	this_dir = os.path.dirname(os.path.abspath(__file__))
 	project_root = os.path.dirname(this_dir)
-	db_path = os.path.join(project_root, "data", "realestate.duckdb")
+	db_path = os.environ.get("DUCKDB_PATH", os.path.join(project_root, "data", "realestate.duckdb"))
 	out_dir = os.path.join(project_root, "data")
 
 	if not os.path.exists(db_path):

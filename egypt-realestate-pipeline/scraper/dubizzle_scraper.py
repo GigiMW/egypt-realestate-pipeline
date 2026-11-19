@@ -1,8 +1,8 @@
-﻿import json
+import json
 import logging
 import os
 import re
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from urllib.parse import urljoin
 
 import requests
@@ -19,11 +19,16 @@ HEADERS = {
 }
 MAX_PAGES = 3
 ADS_PER_PAGE = 12
-RAW_FILE = "data/raw_listings.json"
+# Resolve paths from the project root so the script works no matter where it is
+# launched from (Airflow runs it with a different working directory).
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = os.path.join(PROJECT_ROOT, "data")
+RAW_FILE = os.path.join(DATA_DIR, "raw_listings.json")
+MAX_BEDROOMS = 20
 
 
 def _now_iso():
-    return datetime.now(UTC).isoformat()
+    return datetime.now(timezone.utc).isoformat()
 
 
 def _fetch(url, params=None):
@@ -122,19 +127,23 @@ def _extract_bedrooms(json_ld, title, description, page_text):
         page_text,
     ]
 
+    # Use [ \t-] instead of \s so a number on the previous line of the page
+    # (e.g. the area "133" right above the "Bedrooms" label) is not captured.
     patterns = (
-        r"\b(\d+)\s*[- ]?\s*bed(?:room)?s?\b",
-        r"\bbed(?:room)?s?\s*[:\-]?\s*(\d+)\b",
+        r"\b(\d{1,2})[ \t-]*bed(?:room)?s?\b",
+        r"\bbed(?:room)?s?[ \t]*[:\-]?\s*(\d{1,2})\b",
     )
 
     for candidate in candidates:
         if isinstance(candidate, (int, float)):
-            return int(candidate)
+            if 0 < candidate <= MAX_BEDROOMS:
+                return int(candidate)
+            continue
         if not candidate:
             continue
         for pattern in patterns:
             match = re.search(pattern, str(candidate), re.IGNORECASE)
-            if match:
+            if match and 0 < int(match.group(1)) <= MAX_BEDROOMS:
                 return int(match.group(1))
 
     return None
@@ -217,11 +226,11 @@ if __name__ == "__main__":
         if not data:
             raise RuntimeError("No listings were scraped from Dubizzle")
 
-        os.makedirs("data", exist_ok=True)
-        with open("data/raw_listings.json", "w", encoding="utf-8") as f:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        with open(RAW_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
         logger.info(f"Successfully scraped {len(data)} listings")
-        logger.info(f"Saved to data/raw_listings.json")
+        logger.info(f"Saved to {RAW_FILE}")
     except Exception as e:
         logger.error(f"Scraper failed: {e}", exc_info=True)
         raise

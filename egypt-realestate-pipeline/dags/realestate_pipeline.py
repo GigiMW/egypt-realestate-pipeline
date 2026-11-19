@@ -16,47 +16,31 @@ default_args = {
     "email_on_failure": False,
 }
 
-def run_scraper():
-    scraper_path = os.path.join(PROJECT_ROOT, "scraper", "dubizzle_scraper.py")
+def _run_script(*parts):
+    """Run a project script with the same interpreter and fail the task on error."""
+    script_path = os.path.join(PROJECT_ROOT, *parts)
     result = subprocess.run(
-        [sys.executable, scraper_path],
-        capture_output=True, text=True
+        [sys.executable, script_path],
+        capture_output=True, text=True, cwd=PROJECT_ROOT,
     )
     print(result.stdout)
     if result.returncode != 0:
-        raise Exception(f"Scraper failed:\n{result.stderr}")
+        raise RuntimeError(f"{script_path} failed:\n{result.stderr}")
+    if result.stderr:
+        print(result.stderr)
+
+
+def run_scraper():
+    _run_script("scraper", "dubizzle_scraper.py")
+
 
 def run_loader():
-    loader_path = os.path.join(PROJECT_ROOT, "scraper", "load_to_duckdb.py")
-    result = subprocess.run(
-        [sys.executable, loader_path],
-        capture_output=True, text=True
-    )
-    print(result.stdout)
-    if result.returncode != 0:
-        raise Exception(f"Loader failed:\n{result.stderr}")
+    _run_script("scraper", "load_to_duckdb.py")
+
 
 def run_convert_to_csv():
-    try:
-        import duckdb
-        import pandas as pd
-    except Exception as e:
-        raise RuntimeError(f"Missing dependency for conversion: {e}")
+    _run_script("conversion", "convert_to_csv.py")
 
-    db_path = os.path.join(PROJECT_ROOT, "data", "realestate.duckdb")
-    con = duckdb.connect(db_path)
-    try:
-        con.execute("SELECT * FROM main.mart_listings").df().to_csv(
-            os.path.join(PROJECT_ROOT, "data", "mart_listings.csv"), index=False
-        )
-        con.execute("SELECT * FROM main.avg_price_by_location").df().to_csv(
-            os.path.join(PROJECT_ROOT, "data", "avg_price_by_location.csv"), index=False
-        )
-        con.execute("SELECT * FROM main.price_distribution").df().to_csv(
-            os.path.join(PROJECT_ROOT, "data", "price_distribution.csv"), index=False
-        )
-    finally:
-        con.close()
 
 with DAG(
     dag_id="egypt_realestate_pipeline",
@@ -79,8 +63,8 @@ with DAG(
     )
 
     dbt_run = BashOperator(
-    task_id="dbt_run",
-    bash_command=f"cd {DBT_PROJECT_DIR} && dbt run --profiles-dir {DBT_PROJECT_DIR}",
+        task_id="dbt_run",
+        bash_command=f"cd {DBT_PROJECT_DIR} && dbt run --profiles-dir {DBT_PROJECT_DIR}",
     )
 
     dbt_test = BashOperator(
@@ -93,5 +77,4 @@ with DAG(
         python_callable=run_convert_to_csv,
     )
 
-    scrape_task >> load_task >> dbt_run >> dbt_test
-    dbt_test >> convert_task
+    scrape_task >> load_task >> dbt_run >> dbt_test >> convert_task
